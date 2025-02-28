@@ -1,0 +1,50 @@
+Rocket_Type,Max_Altitude_km,Launch_Site,Launch_Site_Coordinates_(x0;y0;z0),Type_of_Orbit,Initial_Velocity_v0_m_per_s,Launch_Angle_theta_deg,Inclination_Angle_phi_deg,Total_Fuel_Capacity_kg,Mass_kg,Thrust_N,Burn_Time_s
+Electron,500,"Rocket Lab Launch Complex 1, Māhia Peninsula, New Zealand","(-39.261;177.864;0)","LEO",7800,40,39.0,4300,225,934000,80
+Falcon 1,800,"Omelek Island, Kwajalein Atoll, Marshall Islands","(9.0476;167.7431;0)","LEO",7800,45,9.0,10400,470,1800000,169
+Nuri,800,"Naro Space Center, Goheung, South Korea","(34.431;127.535;0)","LEO",7800,40,34.4,29000,1330,4400000,145
+PSLV,2000,"Satish Dhawan Space Centre, Sriharikota, India","(13.719;80.2304;0)","LEO",7800,35,13.7,295000,17000,3200000,110
+Vega,2000,"Guiana Space Centre, French Guiana","(5.236;-52.768;0)","LEO",7800,35,5.2,137000,9700,2500000,112
+SSLV,2000,"Satish Dhawan Space Centre, Sriharikota, India","(13.719;80.2304;0)","LEO",7800,35,13.7,87000,7000,2100000,100
+Firefly Alpha,1000,"Vandenberg Space Force Base, California, USA","(34.742;-120.572;0)","LEO",7800,40,34.7,22000,1000,1720000,165
+Astra Rocket 3,500,"Kodiak Launch Complex, Alaska, USA","(57.435;-152.337;0)","LEO",7800,45,57.4,18000,750,1300000,150
+Soyuz-2.1a,20000,"Baikonur Cosmodrome, Kazakhstan","(45.964;63.305;0)","MEO",10000,50,45.9,305000,20800,6600000,118
+Delta IV Medium,20000,"Cape Canaveral, Florida, USA","(28.3922;-80.6077;0)","MEO",10000,50,28.5,410000,33000,5100000,245
+Antares,2000,"Wallops Flight Facility, Virginia, USA","(37.834;-75.488;0)","LEO",7800,40,37.8,261000,14000,3700000,235
+Long March 2F,2000,"Jiuquan Satellite Launch Center, China","(40.958;100.291;0)","LEO",7800,45,41.0,464000,21000,6000000,166
+H-IIA,35786,"Tanegashima Space Center, Japan","(30.401;130.976;0)","GEO",10000,30,30.4,445000,15000,4200000,397
+H3,35786,"Tanegashima Space Center, Japan","(30.401;130.976;0)","GEO",10000,28,30.4,520000,19000,5900000,390
+Ariane 5,35786,"Guiana Space Centre, French Guiana","(5.236;-52.768;0)","GEO",10000,20,5.2,710000,21000,10500000,140
+Ariane 6 (A62),35786,"Guiana Space Centre, French Guiana","(5.236;-52.768;0)","GEO",10000,32,5.2,530000,21000,8500000,150
+Atlas V,35786,"Cape Canaveral, Florida, USA","(28.3922;-80.6077;0)","GEO",10000,27,28.5,420000,20000,3820000,253
+Falcon 9,35786,"Cape Canaveral, Florida, USA","(28.3922;-80.6077;0)","GEO",10000,30,28.5,500000,25000,7600000,162
+Falcon Heavy,35786,"Kennedy Space Center, Florida, USA","(28.5721;-80.648;0)","GEO",10000,30,28.5,1410000,65000,22800000,154
+GSLV Mk II,35786,"Satish Dhawan Space Centre, Sriharikota, India","(13.719;80.2304;0)","GEO",10000,25,13.7,402000,27000,5140000,150
+GSLV Mk III,35786,"Satish Dhawan Space Centre, Sriharikota, India","(13.719;80.2304;0)","GEO",10000,25,13.7,587000,43000,7800000,181
+Long March 3B,35786,"Xichang Satellite Launch Center, China","(28.246;102.027;0)","GEO",10000,40,28.2,426000,21000,5800000,165
+Long March 4C,2000,"Taiyuan Satellite Launch Center, China","(38.849;111.608;0)","LEO",7800,45,38.8,250000,15000,4200000,160
+Proton-M,35786,"Baikonur Cosmodrome, Kazakhstan","(45.964;63.305;0)","GEO",10000,35,45.9,693000,22000,9500000,213
+Angara A5,35786,"Plesetsk Cosmodrome, Russia","(62.927;40.576;0)","GEO",10000,29,62.9,773000,35000,9600000,214
+Vulcan Centaur,35786,"Cape Canaveral, Florida, USA","(28.3922;-80.6077;0)","GEO",10000,30,28.5,540000,27000,7400000,260
+Delta IV Heavy,40000,"Cape Canaveral, Florida, USA","(28.3922;-80.6077;0)","HEO",11000,30,28.5,950000,50000,11200000,242
+Long March 5,40000,"Wenchang Space Launch Center, China","(19.614;110.951;0)","HEO",11000,25,19.6,837000,25000,10800000,180
+Saturn V,40000,"Kennedy Space Center, Florida, USA","(28.5721;-80.648;0)","HEO",11000,45,28.5,2600000,85000,33900000,150
+Starship,45000,"SpaceX Starbase, Boca Chica, Texas, USA","(25.997;-97.156;0)","HEO",11000,20,25.9,1200000,150000,17000000,150
+New Glenn,35786,"Cape Canaveral, Florida, USA","(28.3922;-80.6077;0)","GEO",10000,35,28.5,740000,45000,12700000,200
+Neutron,10000,"Wallops Flight Facility, Virginia, USA","(37.834;-75.488;0)","MEO",10000,40,37.8,25000,1500,2200000,180
+SLS Block 1,40000,"Kennedy Space Center, Florida, USA","(28.5721;-80.648;0)","HEO",11000,30,28.5,1100000,95000,35000000,126
+Tianlong-2,2000,"Jiuquan Satellite Launch Center, China","(40.958;100.291;0)","LEO",7800,45,41.0,142000,5700,1900000,132
+Zhuque-2,2000,"Jiuquan Satellite Launch Center, China","(40.958;100.291;0)","LEO",7800,45,41.0,180000,6000,2160000,150
+Chollima-1,2000,"Sohae Satellite Launching Station, North Korea","(39.66;124.705;0)","LEO",7800,40,39.7,200000,10000,3000000,180
+Zenit-2,35786,"Baikonur Cosmodrome, Kazakhstan","(45.964;63.305;0)","GEO",10000,35,45.9,459000,23000,7800000,144
+Space Shuttle,28000,"Kennedy Space Center, Florida, USA","(28.5721;-80.648;0)","LEO",7800,30,28.5,1650000,104000,23000000,510
+Voyager 1,50000,"Cape Canaveral, Florida, USA","(28.3922;-80.6077;0)","Interplanetary",12000,45,28.5,30000,722,470000,300
+New Horizons,50000,"Cape Canaveral, Florida, USA","(28.3922;-80.6077;0)","Interplanetary",12000,45,28.5,30000,465,2200000,300
+Parker Solar Probe,50000,"Cape Canaveral, Florida, USA","(28.3922;-80.6077;0)","Interplanetary",12000,45,28.5,685000,685,3820000,253
+Mars Insight,50000,"Vandenberg Space Force Base, California, USA","(34.742;-120.572;0)","Interplanetary",12000,45,34.7,924000,25000,7600000,162
+Perseverance Rover,50000,"Cape Canaveral, Florida, USA","(28.3922;-80.6077;0)","Interplanetary",12000,45,28.5,924000,25000,7600000,162
+Luna 25,50000,"Vostochny Cosmodrome, Russia","(51.884;128.334;0)","Interplanetary",12000,40,51.9,295000,20000,6600000,118
+Chandrayaan-3,50000,"Satish Dhawan Space Centre, Sriharikota, India","(13.719;80.2304;0)","Interplanetary",12000,35,13.7,587000,43000,7800000,181
+Aditya-L1,50000,"Satish Dhawan Space Centre, Sriharikota, India","(13.719;80.2304;0)","Interplanetary",12000,35,13.7,402000,27000,5140000,150
+JUICE,50000,"Guiana Space Centre, French Guiana","(5.236;-52.768;0)","Interplanetary",12000,20,5.2,710000,21000,10500000,140
+Psyche,50000,"Cape Canaveral, Florida, USA","(28.3922;-80.6077;0)","Interplanetary",12000,45,28.5,500000,25000,7600000,162
+OSIRIS-REx,50000,"Cape Canaveral, Florida, USA","(28.3922;-80.6077;0)","Interplanetary",12000,45,28.5,500000,25000,7600000,162
