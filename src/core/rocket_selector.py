@@ -1,95 +1,57 @@
 import pandas as pd
+import os
 
 class RocketSelector:
-    def __init__(self, csv_path="/Users/thrishankkuntimaddi/Documents/Final_Year_Project/Space-Debris-and-Route-Calculation/data/rocket_parameters.csv"):
-        # Load the rocket dataset from CSV
-        self.rocket_df = pd.read_csv(csv_path)
-        # Ensure Max_Altitude_km column is numeric
-        self.rocket_df['Max_Altitude_km'] = pd.to_numeric(self.rocket_df['Max_Altitude_km'], errors='coerce')
-        # Calculate the maximum possible altitude for any rocket
-        self.max_possible_altitude = self.rocket_df['Max_Altitude_km'].max()
+    def __init__(self, data_path="/Users/thrishankkuntimaddi/Documents/Projects/SDARC-Enhanced/data/rocket_parameters.csv"):
+        self.data_path = data_path
+        if not os.path.exists(data_path):
+            raise FileNotFoundError(f"Rocket parameters file not found at {data_path}")
+        self.rockets_df = pd.read_csv(data_path)
 
-    def get_orbit_range(self, orbit_type):
-        """
-        Get the altitude range for a specific orbit type.
-        """
-        orbit_ranges = {
-            'Low Earth Orbit (LEO)': [200, 2000],
-            'Medium Earth Orbit (MEO)': [2000, 35785],
-            'Geostationary Orbit (GEO)': [35786, 35786],
-            'High Earth Orbit (HEO)': [35787, 50000]
+    def filter_rockets(self, altitude, orbit_type):
+        """Filter rockets based on altitude and orbit type."""
+        filtered = self.rockets_df[
+            (self.rockets_df['Max_Altitude_km'] >= altitude) &
+            (self.rockets_df['Type_of_Orbit'] == orbit_type)
+        ]
+        if filtered.empty:
+            raise ValueError(f"No rockets available for {orbit_type} at {altitude} km")
+        return filtered
+
+    def display_options(self, filtered_rockets):
+        """Show available rockets to the user."""
+        print(f"\nAvailable rockets for {filtered_rockets['Type_of_Orbit'].iloc[0]} at {filtered_rockets['Max_Altitude_km'].min()} km or higher:")
+        count = 0
+        for i, row in filtered_rockets.iterrows():
+            count+=1
+            print(f"{count}. {row['Rocket_Type']} (Launch Site: {row['Launch_Site']})")
+
+    def get_rocket_choice(self, filtered_rockets):
+        """Prompt user to select a rocket."""
+        while True:
+            self.display_options(filtered_rockets)
+            try:
+                choice = int(input("Enter your rocket choice (number): "))
+                if 1 <= choice <= len(filtered_rockets):
+                    selected_row = filtered_rockets.iloc[choice - 1]
+                    print(f"Selected rocket: {selected_row['Rocket_Type']} from {selected_row['Launch_Site']}")
+                    return selected_row
+                print(f"Please select a number between 1 and {len(filtered_rockets)}")
+            except ValueError:
+                print("Please enter a valid number")
+
+    def run(self, altitude, orbit_type):
+        """Execute rocket selection."""
+        filtered_rockets = self.filter_rockets(altitude, orbit_type)
+        selected_rocket = self.get_rocket_choice(filtered_rockets)
+        return {
+            'rocket_type': selected_rocket['Rocket_Type'],
+            'launch_site': selected_rocket['Launch_Site'],
+            'coordinates': selected_rocket['Launch_Site_Coordinates_(x0;y0;z0)']
         }
-        return orbit_ranges.get(orbit_type, None)
 
-    def get_rockets_for_orbit_and_altitude(self, target_altitude, orbit_type):
-        """
-        Get rockets capable of reaching the specified target altitude within the selected orbit type.
-        """
-        altitude_range = self.get_orbit_range(orbit_type)
-        if altitude_range is None:
-            return f"Invalid orbit type: {orbit_type}. Please choose a valid orbit type."
-
-        min_range, max_range = altitude_range
-        if not (min_range <= target_altitude <= max_range):
-            return f"The selected altitude of {target_altitude} km is not within the specified range of {min_range} to {max_range} km for {orbit_type}. Please choose a valid altitude within the range."
-
-        # Filter rockets that can reach the selected orbit type range
-        rockets_in_orbit = self.rocket_df[(self.rocket_df['Max_Altitude_km'] >= min_range) & (self.rocket_df['Max_Altitude_km'] <= max_range)]
-
-        # Further filter rockets that can reach the target altitude
-        suitable_rockets = rockets_in_orbit[rockets_in_orbit['Max_Altitude_km'] >= target_altitude]
-
-        if suitable_rockets.empty:
-            if target_altitude > 20000 and orbit_type == 'Medium Earth Orbit (MEO)':
-                return f"No rockets available for the specified target altitude of {target_altitude} km within the selected orbit type {orbit_type} as there are no rockets capable of reaching altitudes above 20000 km in MEO."
-            return f"No rockets available for the specified target altitude of {target_altitude} km within the selected orbit type {orbit_type}."
-
-        # Sort rockets by max altitude
-        suitable_rockets = suitable_rockets.sort_values(by='Max_Altitude_km')
-
-        # Prepare the result with required columns
-        result = suitable_rockets[['Rocket_Type', 'Launch_Site', 'Launch_Site_Coordinates_latitude_and_longitude', 'Max_Altitude_km']].to_dict(orient='records')
-        return result
-
-    def check_rocket_criteria(self, target_altitude, orbit_type):
-        """
-        Allow the user to dynamically input rocket type based on the available rockets for the specified target altitude and orbit type.
-        """
-        # Get the list of rockets for the given target altitude and orbit type
-        rockets_list = self.get_rockets_for_orbit_and_altitude(target_altitude, orbit_type)
-        if isinstance(rockets_list, str):
-            return rockets_list
-
-        # Check if rockets are available
-        if not rockets_list:
-            return f"No rockets available for the specified target altitude of {target_altitude} km within the selected orbit type {orbit_type}."
-
-        # Display available rockets
-        if isinstance(rockets_list, list):
-            print("\nAvailable rockets for the specified target altitude and orbit type:")
-            for i, rocket in enumerate(rockets_list):
-                print(f"{i + 1}: {rocket['Rocket_Type']}")
-
-            # Allow user to select rocket type dynamically
-            rocket_type = input("\nEnter the rocket type from the list above: ")
-
-            # Filter rockets by the provided rocket type
-            rocket = [r for r in rockets_list if r['Rocket_Type'] == rocket_type]
-            if not rocket:
-                return f"Rocket type '{rocket_type}' not found."
-
-            # Output selected rocket details with additional orbit coordinates
-            selected_orbit_coordinates = f"Coordinates for target altitude {target_altitude} km"
-            rocket[0]['Selected_Orbit_Coordinates'] = selected_orbit_coordinates
-
-            # Prepare summary output
-            summary = {
-                "Rocket_Type": rocket[0]['Rocket_Type'],
-                "Launch_Site": rocket[0]['Launch_Site'],
-                "Launch_Site_Coordinates": rocket[0]['Launch_Site_Coordinates_latitude_and_longitude'],
-                "Orbit_Coordinates": rocket[0]['Selected_Orbit_Coordinates']
-            }
-
-            return summary
-
-        return "No rockets available for the specified criteria."
+# if __name__ == "__main__":
+#     selector = RocketSelector()
+#     # Example: LEO at 500 km
+#     result = selector.run(500, "LEO")
+#     print(f"Final selection: {result['rocket_type']} from {result['launch_site']} at {result['coordinates']}")

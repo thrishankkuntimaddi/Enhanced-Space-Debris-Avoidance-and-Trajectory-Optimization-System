@@ -1,78 +1,50 @@
-import math
 import numpy as np
 import pandas as pd
+import os
 
 
 class TrajectoryCalculator:
-    def __init__(self,
-                 dataset_path="/Users/thrishankkuntimaddi/Documents/Final_Year_Project/Space-Debris-and-Route-Calculation/data/rocket_parameters.csv"):
-        """
-        Initializes the TrajectoryCalculator with a dataset.
+    def __init__(self, data_path="/Users/thrishankkuntimaddi/Documents/Projects/SDARC-Enhanced/data/rocket_parameters.csv"):
+        self.data_path = data_path
+        if not os.path.exists(data_path):
+            raise FileNotFoundError(f"Rocket parameters file not found at {data_path}")
+        self.rockets_df = pd.read_csv(data_path)
+        self.g = 9.81  # Gravity (m/s^2)
 
-        Parameters:
-        - dataset_path (str): The file path to the dataset containing rocket parameters.
-        """
-        self.dataset = pd.read_csv(dataset_path)
+    def calculate(self, rocket_type, altitude, launch_coordinates):
+        """Generate initial trajectory equations based on rocket parameters."""
+        # Fetch rocket data
+        rocket = self.rockets_df[self.rockets_df['Rocket_Type'] == rocket_type].iloc[0]
 
-    def calculate_trajectory(self, rocket_type, launch_site, launch_site_coordinates, selected_altitude_to_reach):
-        """
-        Calculates the trajectory equation for a rocket to reach a specified altitude.
+        # Extract parameters
+        v0 = rocket['Initial_Velocity_v0_m_per_s']  # Orbital velocity (m/s)
+        theta = np.radians(rocket['Launch_Angle_theta_deg'])  # Launch angle (radians)
+        phi = np.radians(rocket['Inclination_Angle_phi_deg'])  # Inclination (radians)
+        thrust = rocket['Thrust_N']  # Thrust (N)
+        mass = rocket['Mass_kg']  # Dry mass (kg)
+        burn_time = rocket['Burn_Time_s']  # Burn time (s)
+        x0, y0, z0 = map(float, launch_coordinates.strip('()').split(';'))  # Starting coords
 
-        Parameters:
-        - rocket_type (str): The type of the rocket (e.g., 'Soyuz')
-        - launch_site (str): Name of the launch site (e.g., 'Baikonur Cosmodrome')
-        - launch_site_coordinates (str): Coordinates of the launch site in the format '(x0, y0, z0)' or '(x0, y0)'
-        - selected_altitude_to_reach (float): The altitude to reach in kilometers from Earth's surface
+        # Acceleration from thrust (m/s^2)
+        accel = thrust / mass - self.g
 
-        Returns:
-        - dict: A dictionary with parametric trajectory equations as strings.
-        """
-        # Find the rocket data for the specified rocket type and launch site
-        rocket_data = self.dataset[
-            (self.dataset['Rocket_Type'].str.strip().str.lower() == rocket_type.strip().lower()) &
-            (self.dataset['Launch_Site'].str.strip().str.lower() == launch_site.strip().lower())]
+        # Time to reach altitude (simplified climb phase)
+        t_climb = np.sqrt(2 * altitude * 1000 / accel)  # Convert km to m
 
-        if rocket_data.empty:
-            return "Error: Rocket type or launch site not found in dataset."
-
-        # Extract necessary parameters
-        try:
-            coordinates = launch_site_coordinates.strip('()').split(',')
-            if len(coordinates) == 2:
-                x0, y0 = map(float, coordinates)
-                z0 = 0.0  # Default value for z if not provided
-            elif len(coordinates) == 3:
-                x0, y0, z0 = map(float, coordinates)
-            else:
-                return "Error: Invalid launch site coordinates format. Expected '(x0, y0)' or '(x0, y0, z0)'."
-        except ValueError:
-            return "Error: Invalid coordinate values. Please ensure they are numerical."
-
-        try:
-            v0 = float(rocket_data['Initial_Velocity_v0_m_per_s'].iloc[0])
-        except (ValueError, KeyError):
-            return "Error: Invalid or missing initial velocity in the dataset."
-
-        theta = rocket_data['Launch_Angle_theta_deg'].iloc[0]
-        phi = rocket_data['Inclination_Angle_phi_deg'].iloc[0]
-
-        # Set default values if angles are not provided
-        if pd.isna(theta):
-            theta = 45.0  # Default launch angle in degrees
-        if pd.isna(phi):
-            phi = 0.0  # Default inclination angle in degrees
-
-        # Convert angles to radians
-        theta = math.radians(theta)
-        phi = math.radians(phi)
-        k = 0.1  # Constant controlling the rate of transition
-
-        # Define the trajectory equations as strings
-        trajectory_equations = {
-            'x': f"x(t) = {x0} + {v0} * t * cos({theta}) * cos({phi})",
-            'y': f"y(t) = {y0} + {v0} * t * cos({theta}) * sin({phi})",
-            'z': f"z(t) = {z0} + {v0} * t * sin({theta})",
-            'theta': f"theta(t) = {theta} * (1 - exp(-{k} * t))"
+        # Trajectory equations (parametric in time t)
+        # x and y use horizontal velocity components, z uses thrust ascent
+        equations = {
+            'x': f"{x0} + {v0 * np.cos(theta) * np.cos(phi)} * t",
+            'y': f"{y0} + {v0 * np.cos(theta) * np.sin(phi)} * t",
+            'z': f"{z0} + {0.5 * accel} * t**2 if t <= {burn_time} else {0.5 * accel * burn_time ** 2}"
         }
 
-        return trajectory_equations
+        return equations, t_climb
+
+
+# if __name__ == "__main__":
+#     calc = TrajectoryCalculator()
+#     # Example: Electron to 500 km from (-39.261;177.864;0)
+#     equations, t_climb = calc.calculate("Electron", 500, "(-39.261;177.864;0)")
+#     print(f"Trajectory equations: {equations}")
+#     print(f"Time to altitude: {t_climb:.2f} seconds")
