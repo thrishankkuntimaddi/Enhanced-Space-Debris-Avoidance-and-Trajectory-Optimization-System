@@ -1,251 +1,164 @@
+# src/core/ddql_optimizer.py
 import numpy as np
-import math
-import pandas as pd
+from datetime import datetime
 import random
 from collections import deque
 import tensorflow as tf
 from tensorflow.keras import layers, optimizers
-from sklearn.metrics import f1_score, accuracy_score, precision_score, recall_score
-import matplotlib.pyplot as plt
+from src.core.collision_detector import CollisionDetector
 import os
 
-class DeepDynamicCollisionDetection:
-    def __init__(self, trajectory_equation, rocket_type, launch_sites, launch_coordinates, altitude, altitude_range, orbit_type, time_selected, tle_data, learning_rate=0.0003, discount_factor=0.99, exploration_rate=1.0, exploration_decay=0.995, state_size=3, action_size=10):
-        # Initialization
-        self.trajectory_equation = trajectory_equation
-        self.rocket_type = rocket_type
-        self.launch_sites = launch_sites
-        self.launch_coordinates = launch_coordinates
-        self.altitude = altitude
-        self.altitude_range = altitude_range
-        self.orbit_type = orbit_type
-        self.time_selected = time_selected
-        self.tle_data = pd.read_csv(tle_data) if isinstance(tle_data, str) else tle_data  # Ensure tle_data is a DataFrame
+class DDQLOptimizer:
+    def __init__(self, equations, t_max, timestamp, tle_data_path, threshold_km=1.0, learning_rate=0.001,
+                 discount_factor=0.95, exploration_rate=1.0, exploration_decay=0.995):
+        self.equations = equations.copy()
+        self.t_max = t_max
+        self.timestamp = timestamp
+        self.tle_data_path = tle_data_path
+        self.threshold_km = threshold_km
+        self.detector = CollisionDetector(tle_txt_path=tle_data_path, threshold_km=threshold_km)
         self.learning_rate = learning_rate
         self.discount_factor = discount_factor
         self.exploration_rate = exploration_rate
         self.exploration_decay = exploration_decay
-        self.state_size = state_size
-        self.action_size = action_size
-        self.memory = deque(maxlen=15000)  # Increased replay memory to store more diverse experiences
-        self.actions = [(0, 0), (10, 0), (0, 10), (-10, 0), (5, 5), (-5, -5), (10, 10), (-10, -10), (15, 0), (0, 15)]  # Action space
+        self.state_size = 6  # [rocket_x, y, z, nearest_debris_x, y, z]
+        self.action_size = 5  # Actions: [no change, +x vel, -x vel, +y vel, -y vel]
+        self.memory = deque(maxlen=10000)
         self.model = self._build_model()
-        self.target_model = self._build_model()  # Target network for stable learning
-        self.update_target_model()  # Initialize target model with the same weights as the model
-        self.x_cumulative_adjust = 0
-        self.y_cumulative_adjust = 0
-        self.episode_rewards = []
-        self.collision_avoided = []
-        self.true_labels = []
-        self.predicted_labels = []
-        self.collision_data = []  # Track collision events
-        self.checkpoint_path = "/Users/thrishankkuntimaddi/Documents/Final_Year_Project/Space-Debris-and-Route-Calculation/checkpoints/deep_dynamic_collision_detection.weights.h5"  # Path to save checkpoints
+        self.target_model = self._build_model()
+        self.update_target_model()
+        self.checkpoint_dir = "/Users/thrishankkuntimaddi/Documents/Projects/SDARC-Enhanced/models/"
+        self.checkpoint_path = os.path.join(self.checkpoint_dir, "ddql_optimizer_weights.npz")
 
-        # Load model weights if available
         if os.path.exists(self.checkpoint_path):
-            self.model.load_weights(self.checkpoint_path)
-            print("Checkpoint loaded successfully. Using existing model for predictions.")
+            try:
+                weights = np.load(self.checkpoint_path, allow_pickle=True)
+                self.model.set_weights([weights[f'arr_{i}'] for i in range(len(weights))])
+                print("Loaded checkpoint weights successfully from .npz.")
+            except Exception as e:
+                print(f"Failed to load checkpoint weights: {e}")
+                print("Starting with fresh model weights.")
         else:
-            print("No checkpoint found, training from scratch.")
+            print("No checkpoint found. Starting fresh.")
 
     def _build_model(self):
-        # Improved neural network for Deep Q-Learning
-        model = tf.keras.Sequential()
-        model.add(layers.Input(shape=(self.state_size,)))
-        model.add(layers.Dense(512, activation='relu'))  # Increased neurons for deeper learning
-        model.add(layers.Dense(256, activation='relu'))
-        model.add(layers.Dense(128, activation='relu'))
-        model.add(layers.Dropout(0.3))  # Increased dropout rate for better regularization
-        model.add(layers.Dense(self.action_size, activation='linear'))
+        model = tf.keras.Sequential([
+            layers.Input(shape=(self.state_size,)),
+            layers.Dense(128, activation='relu'),
+            layers.Dense(64, activation='relu'),
+            layers.Dense(self.action_size, activation='linear')
+        ])
         model.compile(loss='mse', optimizer=optimizers.Adam(learning_rate=self.learning_rate))
         return model
 
     def update_target_model(self):
-        # Update target model with weights from the main model
         self.target_model.set_weights(self.model.get_weights())
 
-    def rocket_position(self, t):
-        # Calculate the rocket's position using the given trajectory equations
-        try:
-            x = eval(self.trajectory_equation['x'].replace('x(t) = ', '').replace('t', f'({t})'), {'cos': math.cos, 'sin': math.sin, 'exp': math.exp})
-            y = eval(self.trajectory_equation['y'].replace('y(t) = ', '').replace('t', f'({t})'), {'cos': math.cos, 'sin': math.sin, 'exp': math.exp})
-            z = eval(self.trajectory_equation['z'].replace('z(t) = ', '').replace('t', f'({t})'), {'cos': math.cos, 'sin': math.sin, 'exp': math.exp})
-            return np.array([x, y, z])
-        except Exception as e:
-            print(f"Error calculating rocket position: {e}")
-            return np.array([np.nan, np.nan, np.nan])
+    def _get_state(self, t):
+        rocket_pos = self.detector._rocket_position(self.equations, t)
+        debris_positions = self.detector._debris_positions(self.timestamp, t)
+        if not debris_positions:
+            nearest_debris = np.zeros(3)
+        else:
+            distances = [np.linalg.norm(rocket_pos - d) for d in debris_positions]
+            nearest_idx = np.argmin(distances)
+            nearest_debris = debris_positions[nearest_idx]
+        state = np.concatenate([rocket_pos, nearest_debris])
+        return state
 
-    def satellite_positions(self, t):
-        # Calculate satellite positions based on TLE data and time t
-        positions = []
-        for _, row in self.tle_data.iterrows():
-            try:
-                inclination = row['Inclination_deg']
-                raan = row['RAAN_deg']
-                eccentricity = row['Eccentricity'] * 1e-7
-                mean_motion = row['Mean_Motion']
-                # Simple approximation for satellite position based on mean motion and time t
-                x = inclination * math.cos(raan + mean_motion * t)
-                y = inclination * math.sin(raan + mean_motion * t)
-                z = eccentricity * math.sin(mean_motion * t)
-                positions.append(np.array([x, y, z]))  # Updated to reflect changing positions over time
-            except Exception as e:
-                print(f"Error calculating satellite position: {e}")
-        return positions
+    def _apply_action(self, action):
+        new_equations = self.equations.copy()
+        if action == 1:  # +x vel
+            new_equations['x'] = new_equations['x'].replace('5649.37', str(5649.37 * 1.1))
+        elif action == 2:  # -x vel
+            new_equations['x'] = new_equations['x'].replace('5649.37', str(5649.37 * 0.9))
+        elif action == 3:  # +y vel
+            new_equations['y'] = new_equations['y'].replace('5258.77', str(5258.77 * 1.1))
+        elif action == 4:  # -y vel
+            new_equations['y'] = new_equations['y'].replace('5258.77', str(5258.77 * 0.9))
+        return new_equations
 
-    @staticmethod
-    def detect_collision(rocket_position, satellite_positions, threshold=1.0):
-        # Detect collision by calculating distances
-        for sat_pos in satellite_positions:
-            distance = np.linalg.norm(rocket_position - sat_pos)
-            if distance < threshold:
-                return True  # Collision detected
-        return False
+    def optimize(self, collisions, episodes=50, max_steps=100):
+        if not collisions:
+            print("No collisions to optimize.")
+            return self.equations
 
-    def get_state(self, t):
-        # Generate a simplified state representation based on the rocket's position at time t
-        rocket_pos = self.rocket_position(t)
-        print(f"Debug: Rocket position at time {t}: {rocket_pos}")  # Debug statement for rocket position
-        return np.zeros(self.state_size) if np.any(np.isnan(rocket_pos)) else np.round(rocket_pos, 2)
-
-    def train(self, num_episodes=None, max_steps=None):
-        if num_episodes is None:
-            num_episodes = int(input("Enter total number of episodes: "))
-        if max_steps is None:
-            max_steps = int(input("Enter max_steps: "))
-
-        # Train the model using Deep Q-learning with Double DQN and Target Network
-        for episode in range(num_episodes):
-            state = self.get_state(0)  # Initial state
+        print(f"Optimizing trajectory to avoid {len(collisions)} collisions...")
+        for episode in range(episodes):
+            state = self._get_state(0)
             total_reward = 0
-            collisions_avoided = 0
-            collision_count = 0  # Counter to track collisions per episode
+            current_equations = self.equations.copy()
 
-            for t in range(1, max_steps):
-                # Choose action: exploration or exploitation
+            for step in range(max_steps):
+                t = step * (self.t_max / max_steps)
                 if random.uniform(0, 1) < self.exploration_rate:
                     action = random.randrange(self.action_size)
                 else:
-                    q_values = self.model.predict(state[np.newaxis, :])
-                    print(f"Debug: Q-values for state {state}: {q_values}")  # Debug statement for Q-values
+                    q_values = self.model.predict(state[np.newaxis, :], verbose=0)
                     action = np.argmax(q_values[0])
 
-                # Apply action and calculate new state
-                t_adjust, y_adjust = self.actions[action]
-                print(f"Debug: Action taken: {action}, t_adjust: {t_adjust}, y_adjust: {y_adjust}")  # Debug statement for action
-                self.x_cumulative_adjust += t_adjust
-                self.y_cumulative_adjust += y_adjust
-                new_state = self.get_state(t)
+                new_equations = self._apply_action(action)
+                new_collisions = self.detector.detect_collisions(new_equations, self.timestamp, self.t_max)
+                reward = -100 * len(new_collisions) + 10 if not new_collisions else -100 * len(new_collisions)
+                done = step == max_steps - 1 or not new_collisions
+                next_state = self._get_state(t)
 
-                # Calculate reward
-                rocket_pos = self.rocket_position(t)
-                satellite_pos = self.satellite_positions(t)
-                if self.detect_collision(rocket_pos, satellite_pos):
-                    reward = random.randint(-250, -150)  # Increased penalty for collision with variability to enhance class diversity
-                    done = True
-                    collision_count += 1  # Increment collision counter
-                    self.collision_data.append((t, rocket_pos.tolist()))  # Log collision data
-                else:
-                    reward = random.randint(10, 30)  # Increased and variable reward for safe trajectory to enhance diversity
-                    done = False
+                self.memory.append((state, action, reward, next_state, done))
+                if len(self.memory) > 32:
+                    self._replay(32)
 
-                # Store experience in replay memory
-                self.memory.append((state, action, reward, new_state, done))
-
-                # Train the model using replay
-                if len(self.memory) > 64:
-                    self.replay(64)
-
-                state = new_state
+                state = next_state
                 total_reward += reward
-
-                # Track if collision was avoided
-                if reward > 0:
-                    collisions_avoided += 1
-                    self.true_labels.append(1)
-                    self.predicted_labels.append(1 if action != 0 else 0)
-                else:
-                    self.true_labels.append(1)
-                    self.predicted_labels.append(0)
+                current_equations = new_equations if len(new_collisions) < len(collisions) else current_equations
 
                 if done:
                     break
 
-            # Update target model every 10 episodes
+            self.exploration_rate = max(0.1, self.exploration_rate * self.exploration_decay)
             if episode % 10 == 0:
                 self.update_target_model()
+            print(f"Episode {episode + 1}/{episodes}, Reward: {total_reward}, Collisions: {len(self.detector.detect_collisions(current_equations, self.timestamp, self.t_max))}")
 
-            # Decay exploration rate
-            if self.exploration_rate > 0.1:
-                self.exploration_rate *= (self.exploration_decay ** 0.9)  # Slower decay to encourage more exploration
+        # Save weights as .npz
+        os.makedirs(self.checkpoint_dir, exist_ok=True)
+        try:
+            weights = self.model.get_weights()
+            # Debug: Check for zero-sized weights
+            for i, w in enumerate(weights):
+                if w.size == 0:
+                    print(f"Warning: Weight {i} has size 0: {w.shape}")
+            np.savez(self.checkpoint_path, *weights)
+            print(f"Saved model weights to {self.checkpoint_path}")
+        except Exception as e:
+            print(f"Failed to save weights: {e}")
 
-            print(f"Episode {episode + 1} total reward: {total_reward}")
-            print(f"Total collisions detected in this episode: {collision_count}")  # Debug statement for collisions
-            self.episode_rewards.append(total_reward)
-            self.collision_avoided.append(collisions_avoided / max_steps)
+        final_collisions = self.detector.detect_collisions(current_equations, self.timestamp, self.t_max)
+        print(f"Optimization complete. Final collisions: {len(final_collisions)}")
+        return current_equations
 
-            print(f"Episode: {episode + 1}/{num_episodes}, Total Reward: {total_reward}, Epsilon: {self.exploration_rate}, Collisions Avoided: {collisions_avoided}/{max_steps}")
-
-            # Save model weights after training step
-            self.model.save_weights(self.checkpoint_path)
-
-        # Evaluation Metrics
-        evaluation_metrics = self.evaluate_model(forced=True)
-        print("Training completed.")
-        return evaluation_metrics, self.collision_data, self.optimize_trajectory()
-
-    def replay(self, batch_size):
+    def _replay(self, batch_size):
         minibatch = random.sample(self.memory, batch_size)
-        for state, action, reward, next_state, done in minibatch:
-            target = reward
-            if not done:
-                target += self.discount_factor * np.amax(self.target_model.predict(next_state[np.newaxis, :])[0])
-            target_f = self.model.predict(state[np.newaxis, :])
-            target_f[0][action] = target
-            print(f"Debug: Target for action {action}: {target}")  # Debug statement for target value
-            self.model.fit(state[np.newaxis, :], target_f, epochs=1, verbose=0)
+        states = np.array([m[0] for m in minibatch])
+        actions = np.array([m[1] for m in minibatch])
+        rewards = np.array([m[2] for m in minibatch])
+        next_states = np.array([m[3] for m in minibatch])
+        dones = np.array([m[4] for m in minibatch])
 
-    def evaluate_model(self, forced=False):
-        # Calculate evaluation metrics
-        average_reward = np.mean(self.episode_rewards) if len(self.episode_rewards) > 0 else 0.0
-        collision_avoidance_rate = np.mean(self.collision_avoided) if len(self.collision_avoided) > 0 else 0.0
-        accuracy = accuracy_score(self.true_labels, self.predicted_labels) if len(self.true_labels) > 0 and len(
-            set(self.true_labels)) > 1 else 0.0
-        f1 = f1_score(self.true_labels, self.predicted_labels) if len(self.true_labels) > 0 and len(
-            set(self.true_labels)) > 1 else 0.0
-        precision = precision_score(self.true_labels, self.predicted_labels) if len(self.true_labels) > 0 and len(
-            set(self.true_labels)) > 1 else 0.0
-        recall = recall_score(self.true_labels, self.predicted_labels) if len(self.true_labels) > 0 and len(
-            set(self.true_labels)) > 1 else 0.0
+        targets = self.model.predict(states, verbose=0)
+        next_q_values = self.target_model.predict(next_states, verbose=0)
+        for i in range(batch_size):
+            targets[i][actions[i]] = rewards[i] + self.discount_factor * np.max(next_q_values[i]) * (1 - dones[i])
+        self.model.fit(states, targets, epochs=1, verbose=0)
 
-        print(f"Average Reward: {average_reward}")
-        print(f"Collision Avoidance Rate: {collision_avoidance_rate}")
-        print(f"Accuracy: {accuracy}")
-        print(f"Precision: {precision}")
-        print(f"Recall: {recall}")
-        print(f"F1 Score: {f1}")
-
-        return {
-            'average_reward': average_reward,
-            'collision_avoidance_rate': collision_avoidance_rate,
-            'accuracy': accuracy,
-            'precision': precision,
-            'recall': recall,
-            'f1_score': f1
-        }
-
-    def optimize_trajectory(self):
-        # Apply cumulative adjustments to the trajectory equation
-        self.trajectory_equation['x'] = f"{self.trajectory_equation['x']} + {self.x_cumulative_adjust}"
-        self.trajectory_equation['y'] = f"{self.trajectory_equation['y']} + {self.y_cumulative_adjust}"
-
-        # Return the optimized trajectory after training
-        return self.trajectory_equation
-
-    def predict(self, t):
-        # Use the trained model to predict the action for a given state
-        state = self.get_state(t)
-        q_values = self.model.predict(state[np.newaxis, :])
-        action = np.argmax(q_values[0])
-        print(f"Predicted action for time {t}: {action}")
-        return action
+if __name__ == "__main__":
+    test_equations = {
+        'x': '-39.261 + 5649.37 * t',
+        'y': '177.864 + 5258.77 * t',
+        'z': '0 + 2074.13 * t**2 if t <= 80 else 13279360.0'
+    }
+    test_timestamp = datetime(2025, 3, 1, 12, 0, 0)
+    test_collisions = [(5.0, np.array([100, 200, 300]))]
+    optimizer = DDQLOptimizer(test_equations, 15.54, test_timestamp,
+                              "/Users/thrishankkuntimaddi/Documents/Projects/SDARC-Enhanced/data/tle_data.txt")
+    optimized_equations = optimizer.optimize(test_collisions)
+    print(f"Optimized trajectory: {optimized_equations}")

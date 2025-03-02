@@ -1,3 +1,8 @@
 numpy>=1.23.0
 pandas>=1.5.0
 matplotlib>=3.6.0
+
+sgp4~=2.24
+
+tensorflow-macos==2.15.0
+tensorflow-metal==2.15.0  # Optional
