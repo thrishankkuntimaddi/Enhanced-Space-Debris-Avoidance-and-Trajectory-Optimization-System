@@ -1,4 +1,4 @@
-# Space Debris Avoidance and Trajectory Optimization System (SDARC-Enhanced)
+# Space Debris Avoidance and Trajectory Optimization System (Enhanced)
 
 ## Overview
 The **Space Debris Avoidance and Trajectory Optimization System** (SDARC-Enhanced) is a reinforcement learning-based system for optimizing spacecraft trajectories while avoiding space debris. It integrates a **Double Deep Q-Learning (DDQL) optimizer**, trajectory visualization, collision detection, and an interactive interface.
