@@ -226,6 +226,10 @@ The DDQL agent learns from previous trajectory optimizations and continuously im
 ---
 
 ## **7. Installation Guide**  
+
+### Prerequisites
+Ensure you have Python 3.8+ installed.
+
 ### **A. Clone the Repository**  
 ```bash
 git clone https://github.com/thrishankkuntimaddi/Enhanced-Space-Debris-and-Route-Calculation.git
@@ -257,6 +261,13 @@ python src/interface/app.py
 ```
 Then open **http://127.0.0.1:5000/** in your browser.
 
+## Contributing
+1. Fork the repository.
+2. Create a feature branch (`git checkout -b feature-branch`).
+3. Commit your changes (`git commit -m "Feature description"`).
+4. Push to your branch (`git push origin feature-branch`).
+5. Open a Pull Request.
+
 ---
 
 ## **8. Expected Output**  
@@ -280,31 +291,6 @@ SDARC-Enhanced is a **software-driven space debris avoidance system** using **AI
 
 ### **GitHub Repository**  
 🔗 [**GitHub Link**](https://github.com/thrishankkuntimaddi/Enhanced-Space-Debris-and-Route-Calculation)
-
-## Installation
-### Prerequisites
-Ensure you have Python 3.8+ installed.
-
-### Setup
-```bash
-# Clone the repository
-git clone https://github.com/thrishankkuntimaddi/Enhanced-Space-Debris-and-Route-Calculation.git
-cd Enhanced-Space-Debris-and-Route-Calculation
-
-# Create and activate a virtual environment (optional)
-python -m venv venv
-source venv/bin/activate  # On Windows use: venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
-```
-
-## Contributing
-1. Fork the repository.
-2. Create a feature branch (`git checkout -b feature-branch`).
-3. Commit your changes (`git commit -m "Feature description"`).
-4. Push to your branch (`git push origin feature-branch`).
-5. Open a Pull Request.
 
 ## License
 This project is licensed under the MIT License.
