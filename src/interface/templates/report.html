@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mission Report</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    <header>
+        <h1>Mission Report 🚀</h1>
+    </header>
+    <main>
+        <section class="step-section">
+            <pre id="report-content">{{ report_content }}</pre>
+            <a href="/" class="btn">Back to Start</a>
+        </section>
+    </main>
+    <footer>
+        <p>©2025 Space Debris Avoidance & Trajectory Optimization System. All rights reserved.</p>
+    </footer>
+</body>
+</html>

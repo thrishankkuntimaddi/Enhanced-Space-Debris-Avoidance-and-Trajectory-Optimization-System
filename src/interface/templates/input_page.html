@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SDARC-Enhanced Interface</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <script defer src="{{ url_for('static', filename='js/script.js') }}"></script>
+</head>
+<body>
+    <header>
+        <h1>Space Debris Avoidance and Trajectory Optimization System</h1>
+    </header>
+    <main>
+        <section id="step1" class="step-section">
+            <h2>Upload TLE Data</h2>
+            <input type="file" id="file-upload" accept=".txt">
+            <button id="preprocess">Preprocess</button>
+        </section>
+
+        <section id="step2" class="step-section hidden">
+            <h2>Select Timestamp</h2>
+            <input type="text" id="timestamp" placeholder="YYYY/MM/DD HH:MM:SS (e.g., 2024/06/06 05:11:42)">
+            <p id="timestamp-range"></p>
+            <button id="confirm-timestamp">Confirm</button>
+        </section>
+
+        <section>
+            <div id="timestamp-confirm" class="step-section hidden">Timestamp selected: <span id="selected-timestamp"></span></div>
+        </section>
+
+        <section id="step3" class="step-section hidden">
+            <h2>Select Orbit</h2>
+            <select id="orbit-type">
+                <option value="LEO">LEO (200-2000 km)</option>
+                <option value="MEO">MEO (2000-35786 km)</option>
+                <option value="GEO">GEO (35786 km)</option>
+                <option value="HEO">HEO (35787-50000 km)</option>
+            </select>
+            <input type="number" id="target-altitude" placeholder="Target Altitude (km)">
+            <p id="altitude-range"></p>
+            <button id="confirm-orbit">Confirm</button>
+        </section>
+
+        <section>
+            <div id="orbit-confirm" class="step-section hidden">Orbit selected: <span id="selected-orbit"></span> at <span id="selected-altitude"></span> km</div>
+        </section>
+
+        <section id="step4" class="step-section hidden">
+            <h2>Select Rocket</h2>
+            <select id="rocket-select">
+                <option value="">-- Select Rocket --</option>
+            </select>
+            <button id="calculate">Calculate</button>
+            <div id="rocket-confirm" class="hidden">Rocket selected: <span id="selected-rocket"></span></div>
+        </section>
+
+        <section id="step5" class="step-section hidden">
+            <h2>Processing</h2>
+            <div id="processing" class="hidden">
+                <p id="processing-step"></p>
+            </div>
+        </section>
+
+    </main>
+    <footer>
+        <p>©2025 Space Debris Avoidance & Trajectory Optimization System. All rights reserved.</p>
+    </footer>
+</body>
+</html>

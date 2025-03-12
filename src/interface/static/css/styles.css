@@ -1,0 +1,259 @@
+/* Reset and global styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+    overflow-y: auto; /* Scroll enabled globally */
+}
+
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: radial-gradient(circle, #000000, #000000);
+    color: #eaeaea;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh; /* Grow with content */
+}
+
+/* Splash page specific */
+body.splash {
+    overflow: hidden;
+    height: 100vh;
+    position: relative;
+    background-color: black;
+}
+
+.star, .bstar {
+    position: absolute;
+    background-color: white;
+    border-radius: 50%;
+    animation: appear 5s forwards;
+    z-index: -1;
+}
+
+.star { width: 2px; height: 2px; }
+.bstar { width: 4px; height: 4px; }
+
+@keyframes appear {
+    0% { opacity: 0; }
+    100% { opacity: 1; }
+}
+
+#earth {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 400px;
+    height: 400px;
+    background: url('/static/images/earth_image.png') no-repeat center center;
+    background-size: contain;
+    display: none;
+    animation: fadeIn 2s ease-in-out forwards;
+    z-index: 1;
+}
+
+@keyframes fadeIn {
+    0% { opacity: 0; }
+    100% { opacity: 1; }
+}
+
+#welcome {
+    position: absolute;
+    top: 20%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 50px;
+    color: white;
+    display: none;
+    animation: fadeIn 2s ease-in-out forwards;
+    z-index: 2;
+    white-space: nowrap;
+}
+
+#startBtn {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 300px;
+    height: 50px;
+    font-size: 20px;
+    color: white;
+    background-color: #007bff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    z-index: 2;
+    animation: fadeIn 4s ease-in-out forwards;
+}
+
+#startBtn:hover {
+    background-color: #0056b3;
+}
+
+/* Input page and general styles */
+header {
+    background-color: #000000;
+    padding: 20px;
+    text-align: center;
+    box-shadow: 0 2px 5px rgba(10, 44, 69, 0.3);
+}
+
+header h1 {
+    font-size: 2rem;
+    color: #eaeaea;
+}
+
+footer {
+    background-color: #000000;
+    text-align: center;
+    padding: 10px;
+    margin-top: auto;
+    box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.5);
+}
+
+footer p {
+    font-size: 0.9rem;
+    color: #eaeaea;
+}
+
+main {
+    flex: 1;
+    padding: 20px;
+}
+
+.step-section {
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+    background-color: #222;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+}
+
+.step-section.hidden {
+    display: none;
+}
+
+button {
+    background-color: #1e88e5;
+    color: #ffffff;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+}
+
+button:hover {
+    background-color: #1565c0;
+}
+
+input, select {
+    width: 100%;
+    margin: 0.5rem 0;
+    padding: 0.5rem;
+    border: 1px solid #444;
+    border-radius: 4px;
+    background-color: #333;
+    color: #ffffff;
+}
+
+#altitude-range {
+    font-size: 0.9rem;
+    color: #bbb;
+}
+
+#timestamp-confirm {
+    margin-top: 10px;
+    padding: 10px;
+    background-color: #333;
+    border-radius: 4px;
+    color: #ffffff;
+    font-size: 1rem;
+    animation: fadeIn 0.5s ease-in;
+}
+
+#selected-timestamp {
+    font-weight: bold;
+    color: #1e88e5;
+}
+
+#processing {
+    text-align: center;
+    font-size: 1.5rem;
+    animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+#report-content {
+    background: #1e1e1e;
+    padding: 1rem;
+    border-radius: 5px;
+    white-space: pre-wrap;
+    color: #ffffff;
+    animation: fadeIn 1s ease-in;
+}
+
+.btn {
+    display: inline-block;
+    margin-top: 1rem;
+    padding: 10px 20px;
+    background-color: #1e88e5;
+    color: white;
+    text-decoration: none;
+    border-radius: 5px;
+}
+
+.btn:hover {
+    background-color: #1565c0;
+}
+
+#orbit-confirm {
+    margin-top: 10px;
+    padding: 10px;
+    background-color: #333;
+    border-radius: 4px;
+    color: #ffffff;
+    font-size: 1rem;
+    animation: fadeIn 0.5s ease-in;
+}
+
+#selected-orbit, #selected-altitude {
+    font-weight: bold;
+    color: #1e88e5;
+}
+
+#rocket-confirm {
+    margin-top: 10px;
+    padding: 10px;
+    background-color: #333;
+    border-radius: 4px;
+    color: #ffffff;
+    font-size: 1rem;
+    animation: fadeIn 0.5s ease-in;
+}
+
+#selected-rocket {
+    font-weight: bold;
+    color: #1e88e5;
+}
+
+#processing-step {
+    text-align: center;
+    font-size: 1.5rem;
+    animation: pulse 1s infinite;
+}
