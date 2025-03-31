@@ -15,10 +15,12 @@ def generate_dummy_tle(debris_count, output_path, timestamp, target_altitude, la
     GM = 3.986e14  # Gravitational parameter (m^3/s^2)
 
     tles = []
-    for i in range(debris_count):
+    collision_times = [100, 200, 300] + [random.uniform(t_climb * 0.2, t_climb * 0.8) for _ in
+                                         range(debris_count - 3)]  # Fixed + random
+
+    for i in range(min(debris_count, len(collision_times))):
         satnum = 70000 + i
-        # Pick a collision time
-        t_collision = random.uniform(t_climb * 0.2, t_climb * 0.8)
+        t_collision = collision_times[i]
 
         # Position at collision time
         x = equations['x'](t_collision)
@@ -26,29 +28,18 @@ def generate_dummy_tle(debris_count, output_path, timestamp, target_altitude, la
         z = equations['z'](t_collision)
         r = np.sqrt(x ** 2 + y ** 2 + z ** 2)
 
-        # Velocity approximation (numerical derivative)
-        dt = 0.1  # Small time step
-        vx = (equations['x'](t_collision + dt) - equations['x'](t_collision)) / dt
-        vy = (equations['y'](t_collision + dt) - equations['y'](t_collision)) / dt
-        vz = (equations['z'](t_collision + dt) - equations['z'](t_collision)) / dt
-        v = np.sqrt(vx ** 2 + vy ** 2 + vz ** 2)
-
         # Orbital elements
-        a = r  # Semi-major axis (circular orbit for simplicity)
+        a = r  # Circular orbit at that radius
         n = np.sqrt(GM / a ** 3) * 86400 / (2 * np.pi)  # Mean motion (revs/day)
         inc = np.degrees(np.arccos(z / r))
-        inc = min(max(inc, 0.1), 179.9)  # Avoid singularities
+        inc = min(max(inc, 0.1), 179.9)
         raan = np.degrees(np.arctan2(y, x)) % 360
 
-        # Assume circular orbit for simplicity
-        ecc = 0.0001  # Tiny eccentricity
-        argp = 0.0  # Irrelevant for circular orbit
+        ecc = 0.0001  # Near-circular
+        argp = 0.0  # Perigee irrelevant
+        ma = 0.0  # At position when epoch hits
 
-        # Mean anomaly to place debris at position at t_collision
-        # Debris should be at (x, y, z) when rocket arrives
-        ma = 0.0  # Start at perigee; epoch will align it
-
-        # Epoch is timestamp + t_collision
+        # Epoch = timestamp + t_collision
         collision_time = timestamp + timedelta(seconds=t_collision)
         year = str(collision_time.year)[-2:]
         day_of_year = collision_time.timetuple().tm_yday
@@ -56,11 +47,11 @@ def generate_dummy_tle(debris_count, output_path, timestamp, target_altitude, la
         epoch = f"{year}{day_of_year:03d}.{fraction:08f}"
 
         # TLE params
-        bstar = random.uniform(0.0001, 0.001)
-        mean_motion_dot = random.uniform(-0.00001, 0.00001)
-        mean_motion_ddot = random.uniform(-0.000001, 0.000001)
-        elem_num = random.randint(1, 9999)
-        rev_num = random.randint(1, 9999)
+        bstar = 0.0001  # Minimal drag
+        mean_motion_dot = 0.0
+        mean_motion_ddot = 0.0
+        elem_num = i + 1
+        rev_num = 1
 
         line1 = line1_template.format(
             satnum=satnum, epoch=epoch, mean_motion_dot=mean_motion_dot,
