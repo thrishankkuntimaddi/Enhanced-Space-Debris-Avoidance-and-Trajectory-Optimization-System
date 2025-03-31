@@ -82,7 +82,7 @@ body.splash {
 #startBtn {
     position: fixed;
     bottom: 20px;
-    left: 50%;
+    left: 30%;
     transform: translateX(-50%);
     width: 300px;
     height: 50px;
@@ -97,6 +97,27 @@ body.splash {
 }
 
 #startBtn:hover {
+    background-color: #0056b3;
+}
+
+#dummytleBtn {
+    position: fixed;
+    bottom: 20px;
+    left: 70%;
+    transform: translateX(-50%);
+    width: 300px;
+    height: 50px;
+    font-size: 20px;
+    color: white;
+    background-color: #007bff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    z-index: 2;
+    animation: fadeIn 4s ease-in-out forwards;
+}
+
+#dummytleBtn:hover {
     background-color: #0056b3;
 }
 
@@ -137,6 +158,67 @@ main {
     background-color: #222;
     border-radius: 8px;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+}
+
+/* Ensure hidden works */
+.hidden {
+    display: none !important; /* Force it, just in case */
+}
+
+/* Style the popup dark */
+#tle-instructions-popup {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #222;
+    padding: 20px;
+    border: 1px solid #444;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+    color: #eaeaea;
+    border-radius: 8px;
+    z-index: 1000; /* Ensure it’s above everything */
+}
+
+#tle-instructions-popup a {
+    color: #1e88e5;
+    text-decoration: underline;
+}
+
+#tle-instructions-popup button {
+    background-color: #1e88e5;
+    color: #ffffff;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+#tle-instructions-popup button:hover {
+    background-color: #1565c0;
+}
+
+/* Tweak step-section1 for consistency */
+.step-section1 {
+    margin: 20px;
+    padding: 1.5rem;
+    background-color: #222;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+}
+
+#input-options button {
+    margin-right: 10px;
+}
+
+#tle-text {
+    width: 100%;
+    max-width: 600px;
+    background-color: #333;
+    color: #ffffff;
+    border: 1px solid #444;
+    border-radius: 4px;
+    padding: 0.5rem;
 }
 
 .step-section.hidden {

@@ -7,22 +7,20 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
 </head>
 <body>
-    <!-- Audio: Plays on load, loops, stops on button click -->
     <audio id="background-audio" autoplay loop>
         <source src="{{ url_for('static', filename='audio/background_music.mp3') }}" type="audio/mpeg">
         Your browser doesn’t support audio—space vibes unavailable!
     </audio>
 
-    <!-- Welcome to title -->
     <div id="welcome">Space Debris Avoidance and Trajectory Optimization System</div>
-
-    <!-- Earth and Space Debris -->
     <div id="earth"></div>
 
-    <div>
-        <!-- Start Button: Stops audio on click -->
-        <button id="startBtn" onclick="document.getElementById('background-audio').pause(); window.location.href='/input';">
-            Let's Get Started
+    <div id="button-container">
+        <button id="startBtn" onclick="document.getElementById('background-audio').pause(); window.location.href='/input_page';">
+            Real-Time Testing
+        </button>
+        <button id="dummytleBtn" onclick="document.getElementById('background-audio').pause(); window.location.href='/dummy_tle_testing';">
+            Dummy TLE Testing
         </button>
     </div>
 

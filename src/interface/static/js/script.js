@@ -26,20 +26,73 @@ if (document.getElementById('startBtn')) {
     });
 }
 
-document.getElementById('preprocess').addEventListener('click', () => {
+// Toggle sections
+document.getElementById('upload-btn').addEventListener('click', () => {
+    document.getElementById('upload-section').classList.remove('hidden');
+    document.getElementById('paste-section').classList.add('hidden');
+    document.getElementById('tle-instructions-popup').classList.add('hidden');
+});
+
+document.getElementById('paste-btn').addEventListener('click', () => {
+    document.getElementById('paste-section').classList.remove('hidden');
+    document.getElementById('upload-section').classList.add('hidden');
+    document.getElementById('tle-instructions-popup').classList.add('hidden');
+});
+
+// Upload flow
+document.getElementById('preprocess-upload').addEventListener('click', () => {
     const file = document.getElementById('file-upload').files[0];
-    if (!file) return alert('Please upload a TLE file.');
+    if (!file) return alert('Please upload a TLE file first.');
     const formData = new FormData();
     formData.append('file', file);
     fetch('/upload', { method: 'POST', body: formData })
         .then(response => response.json())
         .then(data => {
-            alert(data.message);
-            document.getElementById('step2').classList.remove('hidden');
-
-            loadTimestamps();
+            if (data.error) {
+                alert('Error: ' + data.error);
+            } else {
+                alert(data.message); // "TLE processed successfully"
+                // document.getElementById('upload-section').classList.add('hidden');
+                document.getElementById('step2').classList.remove('hidden');
+                loadTimestamps(); // Your existing function
+            }
         })
-        .catch(error => alert('Error: ' + error));
+        .catch(error => alert('Upload failed: ' + error));
+});
+
+// Paste flow
+document.getElementById('preprocess-paste').addEventListener('click', () => {
+    const tleText = document.getElementById('tle-text').value.trim();
+    if (!tleText) return alert('Please paste some TLE data first.');
+    if (!tleText.includes('1 ') || !tleText.includes('2 ')) {
+        return alert('Invalid TLE format—needs "1 " and "2 " lines.');
+    }
+    fetch('/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: tleText })
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                alert('Error: ' + data.error);
+            } else {
+                alert(data.message); // "TLE text saved and processed successfully"
+                // Don’t hide paste-section—keep it visible
+                document.getElementById('step2').classList.remove('hidden');
+                loadTimestamps(); // Move to Step 2, keep paste section up
+            }
+        })
+        .catch(error => alert('Paste failed: ' + error));
+});
+
+// Popup logic
+document.getElementById('how-to-btn').addEventListener('click', () => {
+    document.getElementById('tle-instructions-popup').classList.remove('hidden');
+});
+
+document.getElementById('close-popup').addEventListener('click', () => {
+    document.getElementById('tle-instructions-popup').classList.add('hidden');
 });
 
 function loadTimestamps() {

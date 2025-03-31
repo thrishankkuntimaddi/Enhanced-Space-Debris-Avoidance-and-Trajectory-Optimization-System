@@ -12,10 +12,42 @@
         <h1>Space Debris Avoidance and Trajectory Optimization System</h1>
     </header>
     <main>
-        <section id="step1" class="step-section">
+        <section id="step1" class="step-section1">
             <h2>Upload TLE Data</h2>
-            <input type="file" id="file-upload" accept=".txt">
-            <button id="preprocess">Preprocess</button>
+            <div id="input-options">
+                <button id="upload-btn">Upload TLE File</button>
+                <button id="paste-btn">Paste TLE Data</button>
+            </div>
+
+            <!-- Upload Section (hidden by default) -->
+            <div id="upload-section" class="hidden">
+                <input type="file" id="file-upload" accept=".txt">
+                <button id="preprocess-upload">Preprocess</button>
+            </div>
+
+            <!-- Paste Section (hidden by default) -->
+            <div id="paste-section" class="hidden">
+                <textarea id="tle-text" rows="10" cols="50" placeholder="Paste TLE data here..."></textarea>
+                <br>
+                <button id="preprocess-paste">Preprocess</button> <!-- Was update-btn -->
+                <button id="how-to-btn">How to Get TLE Data</button>
+            </div>
+
+            <!-- Instructions Popup (hidden by default) -->
+            <div id="tle-instructions-popup" class="tle-popup hidden">
+                <div class="popup-content">
+                    <h3>How to Get TLE Data</h3>
+                    <p>
+                        1. Go to <a href="https://www.space-track.org" target="_blank">Space-Track.org</a>.<br>
+                        2. Log in or sign up.<br>
+                        3. Hover over "Home" → "Recent ELSETs".<br>
+                        4. Pick a TLE dataset (e.g., "Julian Dates").<br>
+                        5. Select all (Ctrl+A or Cmd+A), copy (Ctrl+C or Cmd+C).<br>
+                        6. Paste here and hit "Preprocess"!
+                    </p>
+                    <button id="close-popup">Close</button>
+                </div>
+            </div>
         </section>
 
         <section id="step2" class="step-section hidden">
