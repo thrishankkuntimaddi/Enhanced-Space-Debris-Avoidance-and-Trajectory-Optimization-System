@@ -4,63 +4,98 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SDATOS — Space Debris Avoidance & Trajectory Optimization</title>
-  <meta name="description" content="AI-powered collision detection and trajectory optimization using DDQL reinforcement learning and real TLE data.">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}?v=20260427">
-  <style>
-    .coord-overlay {
-      position: fixed; z-index: 2; font-size: 9px; letter-spacing: .12em;
-      color: rgba(0,229,255,.25); pointer-events: none;
-      font-family: 'Space Mono', monospace;
-    }
-    .coord-tl { top: 16px; left: 16px; }
-    .coord-tr { top: 16px; right: 16px; text-align: right; }
-    .coord-bl { bottom: 48px; left: 16px; }
-    .coord-br { bottom: 48px; right: 16px; text-align: right; }
-  </style>
+  <meta name="description" content="AI-powered collision detection and trajectory optimization using DDQL reinforcement learning and real TLE satellite data.">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}?v=30">
 </head>
 <body class="splash">
 
+  <!-- Deep space layers -->
+  <div class="milky-way"></div>
+
   <!-- Coordinate overlays -->
   <div class="coord-overlay coord-tl">
-    LAT // 28.3922° N<br>LON // 80.6077° W
+    LAT // 28.3922° N<br>
+    LON // 80.6077° W
   </div>
   <div class="coord-overlay coord-tr">
-    ALT // 400 KM<br>OBJ // 27,000+
+    ALT // 400 KM<br>
+    OBJ // 27,000+
   </div>
   <div class="coord-overlay coord-bl">SYS // ONLINE</div>
   <div class="coord-overlay coord-br">VER // 2.0.0</div>
 
-  <!-- Main splash content -->
-  <div class="monolith-wrap" style="position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;">
+  <!-- Main content -->
+  <div style="display:flex;flex-direction:column;align-items:center;position:relative;z-index:2;">
     <div class="monolith"></div>
+
     <div id="welcome">SDATOS</div>
     <p class="splash-sub">Space Debris Avoidance &amp; Trajectory Optimization System</p>
+
     <div id="button-container">
-      <button id="startBtn" class="btn-accent">⬡ Real-Time Mode</button>
-      <button id="dummytleBtn" class="btn-accent">⬢ Test Mode</button>
+      <button id="startBtn">⬡ Real-Time Mode</button>
+      <button id="dummytleBtn">⬢ Test Mode</button>
     </div>
   </div>
 
-  <!-- Hidden earth div kept for JS compatibility -->
-  <div id="earth"></div>
+  <!-- Hidden for JS compatibility -->
+  <div id="earth" style="display:none;"></div>
 
   <!-- Status bar -->
   <div class="splash-bar">
     <span><span class="dot"></span>SYSTEM NOMINAL</span>
-    <span id="splash-time" style="font-variant-numeric:tabular-nums;">--:--:--</span>
+    <span id="splash-time" style="font-variant-numeric:tabular-nums;">--:--:-- UTC</span>
     <span>TLE DATABASE // READY</span>
   </div>
 
-  <script type="module" src="{{ url_for('static', filename='js/script.js') }}"></script>
   <script>
-    // Live clock
+    // ── Stars (runs immediately, no module needed) ──
+    (function() {
+      const counts = [{cls:'star',n:300},{cls:'bstar',n:80},{cls:'gstar',n:20}];
+      counts.forEach(({cls,n}) => {
+        for (let i=0; i<n; i++) {
+          const s = document.createElement('div');
+          s.className = cls;
+          s.style.left  = Math.random()*100+'vw';
+          s.style.top   = Math.random()*100+'vh';
+          if (cls !== 'star') {
+            s.style.animationDelay = (Math.random()*5).toFixed(1)+'s';
+            s.style.animation = `twinkle ${(Math.random()*3+2).toFixed(1)}s ease-in-out infinite alternate`;
+          }
+          document.body.appendChild(s);
+        }
+      });
+    })();
+
+    // ── Button navigation (plain JS, no module dependency) ──
+    document.getElementById('startBtn').addEventListener('click', function() {
+      window.location.href = '/input_page';
+    });
+    document.getElementById('dummytleBtn').addEventListener('click', function() {
+      window.location.href = '/dummy_tle_testing';
+    });
+
+    // ── Reveal title after stars settle ──
+    setTimeout(function() {
+      const w = document.getElementById('welcome');
+      if (w) w.style.display = 'block';
+    }, 400);
+
+    // ── Live UTC clock ──
     function tick() {
       const t = new Date();
-      document.getElementById('splash-time').textContent =
+      const el = document.getElementById('splash-time');
+      if (el) el.textContent =
         [t.getUTCHours(), t.getUTCMinutes(), t.getUTCSeconds()]
           .map(n => String(n).padStart(2,'0')).join(':') + ' UTC';
     }
     tick(); setInterval(tick, 1000);
   </script>
+
+  <style>
+    @keyframes twinkle {
+      0%   { opacity: .2; transform: scale(1); }
+      100% { opacity: 1;  transform: scale(1.4); }
+    }
+  </style>
 </body>
 </html>
