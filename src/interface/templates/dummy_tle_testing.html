@@ -1,66 +1,191 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dummy TLE Testing</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Mode — SDATOS</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
 </head>
 <body>
-    <header>
-        <h1>Space Debris Avoidance and Trajectory Optimization System</h1>
-    </header>
-    <main>
-        <section id="step1" class="step-section">
-            <h2>Select Timestamp</h2>
-            <input type="text" id="timestamp" placeholder="YYYY/MM/DD HH:MM:SS">
-            <p id="timestamp-range"></p>
-            <button id="confirm-timestamp">Confirm</button>
-            <div id="timestamp-confirm" class="hidden">Timestamp selected: <span id="selected-timestamp"></span></div>
-        </section>
 
-        <section id="step2" class="step-section hidden">
-            <h2>Select Orbit</h2>
-            <select id="orbit-type">
-                <option value="LEO">LEO (200-2000 km)</option>
-                <option value="MEO">MEO (2000-35786 km)</option>
-                <option value="GEO">GEO (35786 km)</option>
-                <option value="HEO">HEO (35787-50000 km)</option>
-            </select>
-            <input type="number" id="target-altitude" placeholder="Target Altitude (km)">
-            <p id="altitude-range"></p>
-            <button id="confirm-orbit">Confirm</button>
-            <div id="orbit-confirm" class="hidden">Orbit selected: <span id="selected-orbit"></span> at <span id="selected-altitude"></span> km</div>
-        </section>
+<!-- HEADER -->
+<header>
+  <div class="hdr-logo">
+    SDATOS <span>Test Mode</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:20px;">
+    <span class="tag tag-amber">Synthetic TLE</span>
+    <span class="hdr-clock" id="hdr-clock">--:--:-- UTC</span>
+  </div>
+</header>
 
-        <section id="step3" class="step-section hidden">
-            <h2>Select Rocket & Calculate Initial Trajectory</h2>
-            <select id="rocket-select">
-                <option value="">-- Select Rocket --</option>
-            </select>
-            <button id="calculate-initial">Calculate Initial Trajectory</button>
-            <div id="rocket-confirm" class="hidden">Rocket selected: <span id="selected-rocket"></span></div>
-            <div id="trajectory-confirm" class="hidden">Initial trajectory calculated</div>
-        </section>
+<div class="mission-layout">
 
-        <section id="step4" class="step-section hidden">
-            <h2>Generate Collision-Prone Dummy TLEs</h2>
-            <label for="debris-count">How many debris objects? (5-20 recommended)</label>
-            <input type="number" id="debris-count" min="5" max="100" placeholder="e.g., 10" required>
-            <button id="generate-btn">Generate</button>
-            <div id="generate-confirm" class="hidden">Generated: <span id="generated-count"></span> dummy TLEs</div>
-        </section>
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <p class="sidebar-label">// Test Pipeline</p>
+    <ul class="step-nav">
+      <li class="active" id="nav-1">
+        <span class="snum">01</span> Timestamp
+      </li>
+      <li id="nav-2">
+        <span class="snum">02</span> Orbit Config
+      </li>
+      <li id="nav-3">
+        <span class="snum">03</span> Rocket + Trajectory
+      </li>
+      <li id="nav-4">
+        <span class="snum">04</span> Generate Debris
+      </li>
+      <li id="nav-5">
+        <span class="snum">05</span> Process &amp; Optimize
+      </li>
+    </ul>
+    <div style="padding:20px;margin-top:auto;border-top:1px solid var(--border);">
+      <p style="font-size:9px;letter-spacing:.14em;color:var(--text-lo);line-height:1.8;">
+        MODE<br>
+        <span style="color:var(--amber);">SYNTHETIC</span><br><br>
+        DEBRIS GEN<br>
+        <span style="color:var(--green);">READY</span><br><br>
+        No Space-Track<br>account needed.
+      </p>
+    </div>
+  </aside>
 
-        <section id="step5" class="step-section hidden">
-            <h2>Processing</h2>
-            <div id="processing" class="hidden">
-                <p id="processing-step"></p>
-            </div>
-        </section>
-    </main>
-    <footer>
-        <p>©2025 Space Debris Avoidance & Trajectory Optimization System. All rights reserved.</p>
-    </footer>
-    <script type="module" src="{{ url_for('static', filename='js/dummy.js') }}"></script>
+  <!-- MAIN -->
+  <main class="mission-main">
+
+    <div class="info-bar" style="margin-bottom:24px;">
+      <span>⬢ <strong>Dummy TLE Mode</strong> — Generates synthetic debris positioned directly on your trajectory</span>
+    </div>
+
+    <!-- STEP 1: Timestamp -->
+    <section id="step1" class="step-section active-step">
+      <h2>01 // Launch Timestamp</h2>
+      <p id="timestamp-range" style="margin-bottom:12px;"></p>
+      <label>Enter Launch Date &amp; Time</label>
+      <input type="text" id="timestamp" placeholder="YYYY/MM/DD HH:MM:SS">
+      <p style="font-size:10px;color:var(--text-lo);margin-top:4px;">
+        Enter a date within the next 7 days. Leave blank to use current time.
+      </p>
+      <div class="btn-row">
+        <button id="confirm-timestamp" class="btn-confirm">▶ Confirm Timestamp</button>
+      </div>
+      <div id="timestamp-confirm" class="confirm-chip hidden">
+        TIMESTAMP // <span id="selected-timestamp"></span>
+      </div>
+    </section>
+
+    <!-- STEP 2: Orbit -->
+    <section id="step2" class="step-section hidden">
+      <h2>02 // Orbit Configuration</h2>
+      <label>Orbit Type</label>
+      <select id="orbit-type">
+        <option value="LEO">LEO — Low Earth Orbit (200–2000 km)</option>
+        <option value="MEO">MEO — Medium Earth Orbit (2000–35786 km)</option>
+        <option value="GEO">GEO — Geostationary Orbit (35786 km)</option>
+        <option value="HEO">HEO — High Earth Orbit (35787–50000 km)</option>
+      </select>
+      <label style="margin-top:12px;">Target Altitude (km)</label>
+      <input type="number" id="target-altitude" placeholder="e.g. 550">
+      <p id="altitude-range"></p>
+      <div class="btn-row">
+        <button id="confirm-orbit" class="btn-confirm">▶ Confirm Orbit</button>
+      </div>
+      <div id="orbit-confirm" class="confirm-chip hidden">
+        ORBIT // <span id="selected-orbit"></span> &nbsp;|&nbsp; ALT // <span id="selected-altitude"></span> KM
+      </div>
+    </section>
+
+    <!-- STEP 3: Rocket -->
+    <section id="step3" class="step-section hidden">
+      <h2>03 // Rocket &amp; Initial Trajectory</h2>
+      <label>Select Launch Vehicle</label>
+      <select id="rocket-select">
+        <option value="">-- Loading vehicles... --</option>
+      </select>
+      <div class="btn-row">
+        <button id="calculate-initial" class="btn-confirm">▶ Calculate Initial Trajectory</button>
+      </div>
+      <div id="rocket-confirm" class="confirm-chip hidden">
+        VEHICLE // <span id="selected-rocket"></span>
+      </div>
+      <div id="trajectory-confirm" class="confirm-chip hidden" style="margin-top:8px;background:var(--accent-dim);border-color:var(--accent-b);color:var(--accent);">
+        INITIAL TRAJECTORY // CALCULATED
+      </div>
+    </section>
+
+    <!-- STEP 4: Generate Debris -->
+    <section id="step4" class="step-section hidden">
+      <h2>04 // Generate Collision-Prone Debris</h2>
+      <div class="info-bar" style="margin-bottom:14px;">
+        <span>TLEs are placed <strong>directly on the calculated trajectory</strong> to guarantee collision events.</span>
+      </div>
+      <label>Number of Debris Objects</label>
+      <input type="number" id="debris-count" min="5" max="100" placeholder="5–100 recommended: 10">
+      <p style="font-size:10px;color:var(--text-lo);margin-top:4px;">
+        More debris = more collision events + longer processing time.
+      </p>
+      <div class="btn-row">
+        <button id="generate-btn" class="btn-confirm">▶ Generate &amp; Process</button>
+      </div>
+      <div id="generate-confirm" class="confirm-chip hidden">
+        DEBRIS GENERATED // <span id="generated-count"></span> OBJECTS
+      </div>
+    </section>
+
+    <!-- STEP 5: Processing -->
+    <section id="step5" class="step-section hidden">
+      <h2>05 // Collision Detection &amp; Optimization</h2>
+      <div id="processing" class="hidden">
+        <div class="proc-ring"></div>
+        <p id="processing-step">Initializing...</p>
+        <p style="font-size:10px;color:var(--text-lo);margin-top:8px;">
+          Running DDQL optimizer. This may take 1–2 minutes.
+        </p>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- Footer -->
+<footer>
+  <span>SDATOS // v2.0.0</span>
+  <span>©2025 Space Debris Avoidance &amp; Trajectory Optimization System</span>
+  <span><span class="dot"></span>TEST MODE</span>
+</footer>
+
+<script>
+  function tick() {
+    const t = new Date();
+    const el = document.getElementById('hdr-clock');
+    if (el) el.textContent = [t.getUTCHours(),t.getUTCMinutes(),t.getUTCSeconds()]
+      .map(n=>String(n).padStart(2,'0')).join(':') + ' UTC';
+  }
+  tick(); setInterval(tick, 1000);
+
+  // Sidebar nav sync
+  function setNav(n) {
+    document.querySelectorAll('.step-nav li').forEach((li,i) => {
+      if (i+1 < n) { li.classList.remove('active'); li.classList.add('done'); }
+      else if (i+1 === n) { li.classList.add('active'); li.classList.remove('done'); }
+      else { li.classList.remove('active','done'); }
+    });
+  }
+  const obs = new MutationObserver(() => {
+    let active = 1;
+    [2,3,4,5].forEach(s => {
+      const el = document.getElementById('step'+s);
+      if (el && !el.classList.contains('hidden')) active = s;
+    });
+    setNav(active);
+  });
+  [2,3,4,5].forEach(id => {
+    const el = document.getElementById('step'+id);
+    if (el) obs.observe(el, {attributes:true, attributeFilter:['class']});
+  });
+</script>
+<script type="module" src="{{ url_for('static', filename='js/dummy.js') }}"></script>
 </body>
 </html>

@@ -1,30 +1,66 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Space Debris Avoidance & Trajectory Optimization System</title>
-    <meta name="description" content="AI-powered space debris avoidance and trajectory optimization using DDQL reinforcement learning and real TLE data.">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SDATOS — Space Debris Avoidance & Trajectory Optimization</title>
+  <meta name="description" content="AI-powered collision detection and trajectory optimization using DDQL reinforcement learning and real TLE data.">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+  <style>
+    .coord-overlay {
+      position: fixed; z-index: 2; font-size: 9px; letter-spacing: .12em;
+      color: rgba(0,229,255,.25); pointer-events: none;
+      font-family: 'Space Mono', monospace;
+    }
+    .coord-tl { top: 16px; left: 16px; }
+    .coord-tr { top: 16px; right: 16px; text-align: right; }
+    .coord-bl { bottom: 48px; left: 16px; }
+    .coord-br { bottom: 48px; right: 16px; text-align: right; }
+  </style>
 </head>
 <body class="splash">
-    <audio id="background-audio" autoplay loop>
-        <source src="{{ url_for('static', filename='audio/background_music.mp3') }}" type="audio/mpeg">
-        Your browser doesn't support audio—space vibes unavailable!
-    </audio>
 
-    <div id="welcome">Space Debris Avoidance and Trajectory Optimization System</div>
-    <div id="earth"></div>
+  <!-- Coordinate overlays -->
+  <div class="coord-overlay coord-tl">
+    LAT // 28.3922° N<br>LON // 80.6077° W
+  </div>
+  <div class="coord-overlay coord-tr">
+    ALT // 400 KM<br>OBJ // 27,000+
+  </div>
+  <div class="coord-overlay coord-bl">SYS // ONLINE</div>
+  <div class="coord-overlay coord-br">VER // 2.0.0</div>
 
+  <!-- Main splash content -->
+  <div class="monolith-wrap" style="position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;">
+    <div class="monolith"></div>
+    <div id="welcome">SDATOS</div>
+    <p class="splash-sub">Space Debris Avoidance &amp; Trajectory Optimization System</p>
     <div id="button-container">
-        <button id="startBtn" onclick="document.getElementById('background-audio').pause(); window.location.href='/input_page';">
-            Real-Time Testing
-        </button>
-        <button id="dummytleBtn" onclick="document.getElementById('background-audio').pause(); window.location.href='/dummy_tle_testing';">
-            Dummy TLE Testing
-        </button>
+      <button id="startBtn" class="btn-accent">⬡ Real-Time Mode</button>
+      <button id="dummytleBtn" class="btn-accent">⬢ Test Mode</button>
     </div>
+  </div>
 
-    <script type="module" src="{{ url_for('static', filename='js/script.js') }}"></script>
+  <!-- Hidden earth div kept for JS compatibility -->
+  <div id="earth"></div>
+
+  <!-- Status bar -->
+  <div class="splash-bar">
+    <span><span class="dot"></span>SYSTEM NOMINAL</span>
+    <span id="splash-time" style="font-variant-numeric:tabular-nums;">--:--:--</span>
+    <span>TLE DATABASE // READY</span>
+  </div>
+
+  <script type="module" src="{{ url_for('static', filename='js/script.js') }}"></script>
+  <script>
+    // Live clock
+    function tick() {
+      const t = new Date();
+      document.getElementById('splash-time').textContent =
+        [t.getUTCHours(), t.getUTCMinutes(), t.getUTCSeconds()]
+          .map(n => String(n).padStart(2,'0')).join(':') + ' UTC';
+    }
+    tick(); setInterval(tick, 1000);
+  </script>
 </body>
 </html>
