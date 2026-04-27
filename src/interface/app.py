@@ -20,6 +20,7 @@ from flask_cors import CORS
 
 app = Flask(__name__, template_folder='templates', static_folder='static')
 app.secret_key = 'supersecretkey'
+app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0  # Disable static file caching
 CORS(app)
 
 OUTPUT_TLE  = str(TLE_DATA)
