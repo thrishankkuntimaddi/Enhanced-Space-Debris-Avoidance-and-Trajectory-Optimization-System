@@ -1,4 +1,5 @@
 // dummy.js
+import { trackEvent, saveMissionSession } from './firebase.js';
 
 // Step 1: Timestamp Selection
 function loadTimestamps() {
@@ -216,8 +217,19 @@ document.getElementById('generate-btn').addEventListener('click', () => {
                             if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
                             return response.json();
                         })
-                        .then(data => {
+                        .then(async data => {
                             if (data.error) throw new Error(data.error);
+
+                            // Save to Firestore + track analytics
+                            await saveMissionSession({
+                                rocketType: rocket.Rocket_Type,
+                                orbitType:  document.getElementById('orbit-type').value,
+                                altitudeKm: parseFloat(document.getElementById('target-altitude').value),
+                                collisions: data.collisions,
+                                status:     'dummy_complete'
+                            });
+                            trackEvent('dummy_trajectory_complete', { collisions: data.collisions });
+
                             const processingStep = document.getElementById('processing-step');
                             let stepIndex = 0;
                             const steps = data.steps;
@@ -238,6 +250,7 @@ document.getElementById('generate-btn').addEventListener('click', () => {
                         .catch(error => {
                             document.getElementById('processing').classList.add('hidden');
                             alert(`Error processing trajectory: ${error.message}`);
+                            trackEvent('dummy_trajectory_error', { error: error.message });
                         });
                 })
                 .catch(error => alert('Generation failed: ' + error.message));

@@ -62,9 +62,10 @@ class TrajectoryVisualizer:
         z_ring = np.full_like(theta, r_target_km)
         fig.add_trace(go.Scatter3d(x=x_ring, y=y_ring, z=z_ring, mode='lines', name='Target Altitude', line=dict(color='cyan', width=6, dash='dash')))
 
-        # Collisions
+        # Collisions — support both (t, pos) and (t, pos, obj_type) tuples
         if collisions:
-            t_coll, pos_coll = zip(*collisions)
+            t_coll = [c[0] for c in collisions]
+            pos_coll = [c[1] for c in collisions]
             x_coll = [p[0] / 1000 for p in pos_coll]
             y_coll = [p[1] / 1000 for p in pos_coll]
             z_coll = [p[2] / 1000 for p in pos_coll]

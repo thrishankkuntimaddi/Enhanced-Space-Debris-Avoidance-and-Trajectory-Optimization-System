@@ -1,6 +1,7 @@
 # src/main.py
 import os
 from datetime import datetime
+from src.config.settings import TLE_RAW, TLE_DATA
 from src.utils.tle_preprocessor import preprocess_and_save_tle
 from src.core.timestamp_selector import TimestampSelector
 from src.core.orbit_selector import OrbitSelector
@@ -12,9 +13,8 @@ from src.core.trajectory_visualizer import TrajectoryVisualizer
 from src.core.mission_report import MissionReport
 
 def main():
-    base_dir = "/Users/thrishankkuntimaddi/Documents/Projects/SDARC-Enhanced"
-    input_tle_path = os.path.join(base_dir, "inputs", "tle_raw.txt")
-    output_tle_path = os.path.join(base_dir, "data", "tle_data.txt")
+    input_tle_path  = str(TLE_RAW)
+    output_tle_path = str(TLE_DATA)
 
     print("Preprocessing TLE data...")
     try:
@@ -79,7 +79,7 @@ def main():
     try:
         detector = CollisionDetector(tle_txt_path=output_tle_path, threshold_km=1.0)
         collisions = detector.detect_collisions(equations, timestamp, t_climb)
-        # Enhance collisions with object type (assuming detector returns (t, pos, obj_type) or just (t, pos))
+        # Enhance collisions with object type
         collisions_with_obj = [(t, pos, "Unknown Object") for t, pos in collisions] if collisions else []
         print(f"Collisions detected: {len(collisions)}")
         for t, pos in collisions:
@@ -96,16 +96,15 @@ def main():
         try:
             optimizer = DDQLOptimizer(equations, t_climb, timestamp, output_tle_path, threshold_km=1.0)
             optimized_equations = optimizer.optimize(collisions)
-            print(f"Optimized trajectory equations generated.")
-            # Recalculate optimized trajectory data
+            print("Optimized trajectory equations generated.")
             opt_equations, opt_t_climb, opt_formulas, opt_initial, opt_orbit_vel, opt_burn_time = traj_calc.calculate(
                 rocket_info['rocket_type'], altitude, rocket_info['coordinates']
-            )  # Simplified—use optimized_equations if calc supports it
+            )
             optimized_trajectory_data = (optimized_equations, opt_t_climb, opt_formulas, opt_initial, opt_orbit_vel, opt_burn_time)
             collisions = detector.detect_collisions(optimized_equations, timestamp, opt_t_climb)
             collisions_with_obj = [(t, pos, "Unknown Object") for t, pos in collisions] if collisions else []
             print(f"Post-optimization collisions: {len(collisions)}")
-            equations = optimized_equations  # Use optimized for viz
+            equations = optimized_equations
         except Exception as e:
             print(f"Error during optimization: {e}")
             return
@@ -126,11 +125,10 @@ def main():
 
     print("Generating mission report...")
     try:
-        # Rocket params from TrajectoryCalculator's rocket_data
         rocket_data = traj_calc.rocket_data
         rocket_params = {
-            'thrust_N': float(rocket_data[rocket_data['Rocket_Type'] == rocket_info['rocket_type']]['Thrust_N'].iloc[0]),
-            'mass_kg': float(rocket_data[rocket_data['Rocket_Type'] == rocket_info['rocket_type']]['Mass_kg'].iloc[0]),
+            'thrust_N':    float(rocket_data[rocket_data['Rocket_Type'] == rocket_info['rocket_type']]['Thrust_N'].iloc[0]),
+            'mass_kg':     float(rocket_data[rocket_data['Rocket_Type'] == rocket_info['rocket_type']]['Mass_kg'].iloc[0]),
             'burn_time_s': float(rocket_data[rocket_data['Rocket_Type'] == rocket_info['rocket_type']]['Burn_Time_s'].iloc[0])
         }
         report = MissionReport()
@@ -150,7 +148,6 @@ def main():
         return
 
     print("\n")
-
     print("Space Debris Avoidance and Trajectory Optimization System - simulation complete!")
 
 if __name__ == "__main__":

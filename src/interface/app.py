@@ -13,16 +13,18 @@ from src.core.ddql_optimizer import DDQLOptimizer
 from src.core.trajectory_visualizer import TrajectoryVisualizer
 from src.core.mission_report import MissionReport
 from src.utils.dummy_tle_generator import generate_dummy_tle
+from src.config.settings import (
+    PROJECT_ROOT, TLE_RAW, TLE_DATA, REPORTS_DIR, STATIC_DIR
+)
 from flask_cors import CORS
 
 app = Flask(__name__, template_folder='templates', static_folder='static')
 app.secret_key = 'supersecretkey'
 CORS(app)
 
-BASE_DIR = "/Users/thrishankkuntimaddi/Documents/Projects/SDARC-Enhanced"
-OUTPUT_TLE = os.path.join(BASE_DIR, "data", "tle_data.txt")
-REPORTS_DIR = os.path.join(BASE_DIR, "outputs", "mission_reports")
-STATIC_DIR = os.path.join(BASE_DIR, "src", "interface", "static")
+OUTPUT_TLE  = str(TLE_DATA)
+REPORTS_DIR = str(REPORTS_DIR)
+STATIC_DIR  = str(STATIC_DIR)
 ALLOWED_EXTENSIONS = {'txt'}
 
 os.makedirs(REPORTS_DIR, exist_ok=True)
@@ -98,7 +100,7 @@ def generate_dummy_tles():
         equations = g.dummy_equations
         t_climb = traj_data['t_climb']
 
-        output_path = os.path.join(BASE_DIR, "data", "tle_data.txt")
+        output_path = str(TLE_DATA)
         message = generate_dummy_tle(debris_count, output_path, timestamp, target_altitude, lat, lon, equations, t_climb)
 
         session['dummy_input'] = data
@@ -208,7 +210,7 @@ def process_dummy_trajectory():
 
 @app.route('/upload', methods=['POST'])
 def upload_dataset():
-    raw_tle_path = os.path.join(BASE_DIR, "inputs", "tle_raw.txt")
+    raw_tle_path = str(TLE_RAW)
     os.makedirs(os.path.dirname(raw_tle_path), exist_ok=True)
     file = request.files.get('file')
     if file and allowed_file(file.filename):

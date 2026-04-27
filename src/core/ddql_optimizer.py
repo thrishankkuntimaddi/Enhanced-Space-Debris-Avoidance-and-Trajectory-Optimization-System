@@ -3,20 +3,27 @@ import numpy as np
 from datetime import datetime
 import random
 from collections import deque
-import tensorflow as tf
-from tensorflow.keras import layers, optimizers
+try:
+    import tensorflow as tf
+    from tensorflow.keras import layers, optimizers
+    TF_AVAILABLE = True
+except ImportError:
+    TF_AVAILABLE = False
+    print("[DDQLOptimizer] WARNING: TensorFlow not installed. "
+          "Optimization will be disabled. Install tensorflow-macos to enable it.")
 from src.core.collision_detector import CollisionDetector
+from src.config.settings import MODELS_DIR, TLE_DATA
 import os
 
 class DDQLOptimizer:
-    def __init__(self, equations, t_max, timestamp, tle_data_path, threshold_km=1.0, learning_rate=0.001,
+    def __init__(self, equations, t_max, timestamp, tle_data_path=None, threshold_km=1.0, learning_rate=0.001,
                  discount_factor=0.95, exploration_rate=1.0, exploration_decay=0.995):
         self.equations = equations.copy()
         self.t_max = t_max
         self.timestamp = timestamp
-        self.tle_data_path = tle_data_path
+        self.tle_data_path = str(tle_data_path) if tle_data_path else str(TLE_DATA)
         self.threshold_km = threshold_km
-        self.detector = CollisionDetector(tle_txt_path=tle_data_path, threshold_km=threshold_km)
+        self.detector = CollisionDetector(tle_txt_path=self.tle_data_path, threshold_km=threshold_km)
         self.learning_rate = learning_rate
         self.discount_factor = discount_factor
         self.exploration_rate = exploration_rate
@@ -26,11 +33,12 @@ class DDQLOptimizer:
         self.memory = deque(maxlen=10000)
         self.model = self._build_model()
         self.target_model = self._build_model()
-        self.update_target_model()
-        self.checkpoint_dir = "/Users/thrishankkuntimaddi/Documents/Projects/SDARC-Enhanced/models/"
+        if TF_AVAILABLE:
+            self.update_target_model()
+        self.checkpoint_dir = str(MODELS_DIR)
         self.checkpoint_path = os.path.join(self.checkpoint_dir, "ddql_optimizer_weights.npz")
 
-        if os.path.exists(self.checkpoint_path):
+        if TF_AVAILABLE and os.path.exists(self.checkpoint_path):
             try:
                 weights = np.load(self.checkpoint_path, allow_pickle=True)
                 self.model.set_weights([weights[f'arr_{i}'] for i in range(len(weights))])
@@ -38,10 +46,12 @@ class DDQLOptimizer:
             except Exception as e:
                 print(f"Failed to load checkpoint weights: {e}")
                 print("Starting with fresh model weights.")
-        else:
+        elif TF_AVAILABLE:
             print("No checkpoint found. Starting fresh.")
 
     def _build_model(self):
+        if not TF_AVAILABLE:
+            return None
         model = tf.keras.Sequential([
             layers.Input(shape=(self.state_size,)),
             layers.Dense(128, activation='relu'),
@@ -79,6 +89,11 @@ class DDQLOptimizer:
         return new_equations
 
     def optimize(self, collisions, episodes=50, max_steps=100):
+        if not TF_AVAILABLE:
+            raise RuntimeError(
+                "TensorFlow is required for trajectory optimization but is not installed. "
+                "Install it with: pip install tensorflow-macos==2.15.0"
+            )
         if not collisions:
             print("No collisions to optimize.")
             return self.equations

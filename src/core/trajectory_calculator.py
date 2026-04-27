@@ -2,13 +2,14 @@
 import numpy as np
 from scipy.optimize import fsolve
 import pandas as pd
+from src.config.settings import ROCKET_CSV
 
 class TrajectoryCalculator:
     def __init__(self):
         self.R = 6371e3
         self.GM = 3.986e14
         self.g0 = 9.81
-        self.rocket_data = pd.read_csv("/Users/thrishankkuntimaddi/Documents/Projects/SDARC-Enhanced/data/rocket_parameters.csv")
+        self.rocket_data = pd.read_csv(str(ROCKET_CSV))
 
     def calculate(self, rocket_type, altitude_km, initial_position):
         altitude = altitude_km * 1000

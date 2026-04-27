@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SDATOS — Space Debris Avoidance & Trajectory Optimization System</title>
+    <meta name="description" content="AI-powered space debris avoidance and trajectory optimization using DDQL reinforcement learning and real TLE satellite data.">
+    <meta property="og:title" content="SDATOS — Space Debris Avoidance System">
+    <meta property="og:description" content="Real-time collision detection and AI trajectory optimization for spacecraft launch planning.">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap');
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --blue:   #2563eb;
+            --cyan:   #06b6d4;
+            --purple: #7c3aed;
+            --dark:   #020617;
+            --card:   #0f172a;
+            --border: rgba(255,255,255,0.08);
+        }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--dark);
+            color: #e2e8f0;
+            overflow-x: hidden;
+        }
+
+        /* ── Stars ── */
+        .stars { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+        .star {
+            position: absolute;
+            background: white;
+            border-radius: 50%;
+            animation: twinkle var(--d, 3s) infinite alternate;
+        }
+        @keyframes twinkle { 0%{opacity:.1} 100%{opacity:.9} }
+
+        /* ── Layout ── */
+        main { position: relative; z-index: 1; }
+
+        /* ── Hero ── */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 2rem;
+            background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(37,99,235,.25) 0%, transparent 70%);
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: .5rem;
+            background: rgba(37,99,235,.15);
+            border: 1px solid rgba(37,99,235,.4);
+            color: #93c5fd;
+            font-size: .75rem;
+            font-weight: 600;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+            padding: .35rem 1rem;
+            border-radius: 999px;
+            margin-bottom: 1.5rem;
+        }
+        .badge::before { content: '🛰️'; font-size: 1rem; }
+
+        h1 {
+            font-size: clamp(2rem, 6vw, 4.5rem);
+            font-weight: 900;
+            line-height: 1.1;
+            background: linear-gradient(135deg, #fff 30%, #93c5fd 70%, #7c3aed);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 1.25rem;
+            max-width: 900px;
+        }
+
+        .subtitle {
+            font-size: clamp(1rem, 2vw, 1.25rem);
+            color: #94a3b8;
+            max-width: 620px;
+            line-height: 1.7;
+            margin-bottom: 2.5rem;
+        }
+
+        .cta-group { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; }
+
+        .btn-primary, .btn-secondary {
+            display: inline-flex;
+            align-items: center;
+            gap: .5rem;
+            padding: .85rem 2rem;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 1rem;
+            text-decoration: none;
+            transition: transform .2s, box-shadow .2s;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, var(--blue), var(--purple));
+            color: white;
+            box-shadow: 0 4px 24px rgba(37,99,235,.4);
+        }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(37,99,235,.5); }
+
+        .btn-secondary {
+            background: rgba(255,255,255,.06);
+            border: 1px solid var(--border);
+            color: #e2e8f0;
+        }
+        .btn-secondary:hover { background: rgba(255,255,255,.1); transform: translateY(-2px); }
+
+        /* ── Feature cards ── */
+        .features {
+            padding: 6rem 2rem;
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+        .section-label {
+            text-align: center;
+            font-size: .85rem;
+            font-weight: 700;
+            letter-spacing: .12em;
+            text-transform: uppercase;
+            color: #60a5fa;
+            margin-bottom: 1rem;
+        }
+        .section-title {
+            text-align: center;
+            font-size: clamp(1.5rem, 4vw, 2.5rem);
+            font-weight: 800;
+            color: #f1f5f9;
+            margin-bottom: 3.5rem;
+        }
+
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 2rem;
+            transition: transform .25s, border-color .25s, box-shadow .25s;
+        }
+        .card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(37,99,235,.4);
+            box-shadow: 0 8px 32px rgba(37,99,235,.15);
+        }
+        .card-icon { font-size: 2.5rem; margin-bottom: 1rem; }
+        .card h3 { font-size: 1.1rem; font-weight: 700; color: #f1f5f9; margin-bottom: .6rem; }
+        .card p  { font-size: .9rem; color: #94a3b8; line-height: 1.65; }
+
+        /* ── Architecture banner ── */
+        .architecture {
+            background: linear-gradient(135deg, rgba(37,99,235,.1) 0%, rgba(124,58,237,.1) 100%);
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+            padding: 5rem 2rem;
+            text-align: center;
+        }
+        .arch-note {
+            display: inline-block;
+            background: rgba(234,179,8,.12);
+            border: 1px solid rgba(234,179,8,.4);
+            color: #fde047;
+            border-radius: 8px;
+            padding: .75rem 1.5rem;
+            font-size: .9rem;
+            margin-bottom: 2rem;
+            max-width: 700px;
+        }
+        .arch-diagram {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            margin-top: 2rem;
+            font-size: .9rem;
+        }
+        .arch-box {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: .8rem 1.4rem;
+            color: #e2e8f0;
+        }
+        .arch-arrow { color: #475569; font-size: 1.5rem; }
+
+        /* ── Deploy section ── */
+        .deploy {
+            padding: 5rem 2rem;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        .deploy-steps {
+            display: grid;
+            gap: 1rem;
+            counter-reset: step;
+        }
+        .deploy-step {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.25rem 1.5rem;
+            display: flex;
+            gap: 1.25rem;
+            align-items: flex-start;
+            counter-increment: step;
+        }
+        .step-num {
+            min-width: 2rem;
+            height: 2rem;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--blue), var(--purple));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: .85rem;
+            color: white;
+            flex-shrink: 0;
+        }
+        .deploy-step h4 { font-size: .95rem; font-weight: 700; color: #f1f5f9; margin-bottom: .25rem; }
+        .deploy-step p  { font-size: .85rem; color: #94a3b8; line-height: 1.55; }
+        .deploy-step code {
+            background: rgba(255,255,255,.07);
+            border-radius: 4px;
+            padding: .1rem .35rem;
+            font-size: .82rem;
+            color: #7dd3fc;
+        }
+
+        /* ── Footer ── */
+        footer {
+            text-align: center;
+            padding: 2.5rem;
+            color: #475569;
+            font-size: .85rem;
+            border-top: 1px solid var(--border);
+        }
+        footer a { color: #60a5fa; text-decoration: none; }
+    </style>
+</head>
+<body>
+
+<!-- Starfield -->
+<div class="stars" id="stars"></div>
+
+<main>
+    <!-- Hero -->
+    <section class="hero">
+        <div class="badge">Enhanced SDATOS v2.0</div>
+        <h1>Space Debris Avoidance &amp; Trajectory Optimization</h1>
+        <p class="subtitle">
+            AI-powered collision detection using Double DQL reinforcement learning,
+            real TLE satellite data, and 3D interactive trajectory visualization.
+        </p>
+        <div class="cta-group">
+            <a id="launch-btn" href="#" class="btn-primary">🚀 Launch App</a>
+            <a href="https://github.com/thrishankkuntimaddi/Enhanced-Space-Debris-Avoidance-and-Trajectory-Optimization-System"
+               class="btn-secondary" target="_blank" rel="noopener">⭐ View on GitHub</a>
+        </div>
+    </section>
+
+    <!-- Features -->
+    <section class="features">
+        <p class="section-label">Capabilities</p>
+        <h2 class="section-title">What this system does</h2>
+        <div class="cards">
+            <div class="card">
+                <div class="card-icon">🛰️</div>
+                <h3>Real TLE Ingestion</h3>
+                <p>Upload or paste live Two-Line Element sets from Space-Track.org. The system preprocesses and validates thousands of debris objects in seconds.</p>
+            </div>
+            <div class="card">
+                <div class="card-icon">⚡</div>
+                <h3>DDQL Optimization</h3>
+                <p>A Double Deep Q-Learning agent learns to adjust the rocket's trajectory in real-time, minimizing collision probability while preserving orbital insertion.</p>
+            </div>
+            <div class="card">
+                <div class="card-icon">🌍</div>
+                <h3>3D Visualization</h3>
+                <p>Interactive Plotly 3D globe renders the full trajectory — burn phase, coast phase, target ring, and collision markers — with playback animation.</p>
+            </div>
+            <div class="card">
+                <div class="card-icon">📊</div>
+                <h3>Mission Reports</h3>
+                <p>Automatically generated text reports covering rocket params, trajectory equations, collision events, and post-optimization stats.</p>
+            </div>
+            <div class="card">
+                <div class="card-icon">🔥</div>
+                <h3>Firebase Analytics</h3>
+                <p>Every session is tracked with Google Analytics and Firestore — mission outcomes, collision counts, and optimization effectiveness are logged in real-time.</p>
+            </div>
+            <div class="card">
+                <div class="card-icon">🧪</div>
+                <h3>Dummy TLE Testing</h3>
+                <p>No Space-Track account? Generate synthetic collision-prone TLEs placed directly on your trajectory to test the full pipeline instantly.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Architecture -->
+    <section class="architecture">
+        <p class="section-label">Architecture</p>
+        <h2 class="section-title" style="margin-bottom:1.5rem">How it's deployed</h2>
+        <div class="arch-note">
+            ⚠️ GitHub Pages hosts only static files. The Python/Flask backend (trajectory math, collision detection, AI optimizer)
+            must run on a server. <strong>Recommended: deploy the backend to Render.com for free.</strong>
+        </div>
+        <div class="arch-diagram">
+            <div class="arch-box">🌐 GitHub Pages<br><small style="color:#64748b">This landing page</small></div>
+            <div class="arch-arrow">→</div>
+            <div class="arch-box">🖥️ Render / Railway<br><small style="color:#64748b">Flask + Python backend</small></div>
+            <div class="arch-arrow">→</div>
+            <div class="arch-box">🔥 Firebase<br><small style="color:#64748b">Analytics + Firestore</small></div>
+        </div>
+    </section>
+
+    <!-- Deploy Steps -->
+    <section class="deploy">
+        <p class="section-label">Deployment</p>
+        <h2 class="section-title">Get it live in 5 minutes</h2>
+        <div class="deploy-steps">
+            <div class="deploy-step">
+                <div class="step-num">1</div>
+                <div>
+                    <h4>Push to GitHub</h4>
+                    <p>The repository is already configured. Run <code>git push origin main</code> to trigger the GitHub Actions workflow that publishes this page.</p>
+                </div>
+            </div>
+            <div class="deploy-step">
+                <div class="step-num">2</div>
+                <div>
+                    <h4>Deploy backend to Render</h4>
+                    <p>Go to <a href="https://render.com" target="_blank" style="color:#60a5fa">render.com</a> → New Web Service → connect this repo → Render auto-detects <code>render.yaml</code> and deploys the Flask app.</p>
+                </div>
+            </div>
+            <div class="deploy-step">
+                <div class="step-num">3</div>
+                <div>
+                    <h4>Set your backend URL here</h4>
+                    <p>Edit <code>docs/index.html</code> — replace <code>YOUR_RENDER_URL</code> with your Render deployment URL so the "Launch App" button points to the live backend.</p>
+                </div>
+            </div>
+            <div class="deploy-step">
+                <div class="step-num">4</div>
+                <div>
+                    <h4>Enable GitHub Pages</h4>
+                    <p>In your repo Settings → Pages → Source: <code>Deploy from branch</code> → Branch: <code>main</code> → Folder: <code>/docs</code> → Save.</p>
+                </div>
+            </div>
+            <div class="deploy-step">
+                <div class="step-num">5</div>
+                <div>
+                    <h4>Enable Firestore</h4>
+                    <p>In <a href="https://console.firebase.google.com" target="_blank" style="color:#60a5fa">Firebase Console</a> → Firestore Database → Create database → Start in test mode. Mission sessions will appear under the <code>mission_sessions</code> collection.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+</main>
+
+<footer>
+    <p>
+        Built with 🛰️ by
+        <a href="https://github.com/thrishankkuntimaddi" target="_blank" rel="noopener">thrishankkuntimaddi</a>
+        &nbsp;·&nbsp;
+        <a href="https://github.com/thrishankkuntimaddi/Enhanced-Space-Debris-Avoidance-and-Trajectory-Optimization-System" target="_blank" rel="noopener">GitHub</a>
+    </p>
+</footer>
+
+<script>
+    // Starfield
+    const container = document.getElementById('stars');
+    for (let i = 0; i < 200; i++) {
+        const s = document.createElement('div');
+        s.className = 'star';
+        const size = Math.random() * 3 + 1;
+        s.style.cssText = `
+            width:${size}px; height:${size}px;
+            left:${Math.random()*100}%; top:${Math.random()*100}%;
+            --d:${(Math.random()*4+2).toFixed(1)}s;
+            animation-delay:${(Math.random()*4).toFixed(1)}s;
+        `;
+        container.appendChild(s);
+    }
+
+    // Point "Launch App" to your Render backend URL
+    // Replace the placeholder below after you deploy to Render
+    const BACKEND_URL = 'YOUR_RENDER_URL';  // e.g. https://sdatos.onrender.com
+    const btn = document.getElementById('launch-btn');
+    if (BACKEND_URL && BACKEND_URL !== 'YOUR_RENDER_URL') {
+        btn.href = BACKEND_URL;
+    } else {
+        btn.href = '#deploy';
+        btn.title = 'Deploy the backend first — see instructions below';
+    }
+</script>
+</body>
+</html>

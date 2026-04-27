@@ -2,14 +2,15 @@
 import pandas as pd
 import numpy as np
 import os
+from src.config.settings import ROCKET_CSV
 
 class RocketSelector:
-    def __init__(self, data_path="/Users/thrishankkuntimaddi/Documents/Projects/SDARC-Enhanced/data/rocket_parameters.csv"):
-        self.data_path = data_path
-        if not os.path.exists(data_path):
-            raise FileNotFoundError(f"Rocket parameters file not found at {data_path}")
+    def __init__(self, data_path=None):
+        self.data_path = str(data_path) if data_path else str(ROCKET_CSV)
+        if not os.path.exists(self.data_path):
+            raise FileNotFoundError(f"Rocket parameters file not found at {self.data_path}")
         # Load everything as strings to avoid pandas nonsense
-        self.rockets_df = pd.read_csv(data_path, dtype=str)
+        self.rockets_df = pd.read_csv(self.data_path, dtype=str)
         # Convert numeric columns explicitly
         for col in ['Max_Altitude_km', 'x0', 'y0', 'z0', 'Initial_Velocity_v0_m_per_s',
                    'Launch_Angle_theta_deg', 'Inclination_Angle_phi_deg', 'Total_Fuel_Capacity_kg',

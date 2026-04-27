@@ -1,10 +1,11 @@
 from datetime import datetime, timedelta
 import os
+from src.config.settings import TLE_DATA
 
 class TimestampSelector:
-    def __init__(self, tle_data_path="/Users/thrishankkuntimaddi/Documents/Projects/SDARC-Enhanced/data/tle_data.txt"):
+    def __init__(self, tle_data_path=None):
         self.default_timestamp = datetime.now().replace(microsecond=0)
-        self.tle_data_path = tle_data_path
+        self.tle_data_path = str(tle_data_path) if tle_data_path else str(TLE_DATA)
         self.epoch_start = self._get_tle_epoch_start()
         self.epoch_end = self.epoch_start + timedelta(days=7)
         print(f"TLE epoch start: {self.epoch_start}")

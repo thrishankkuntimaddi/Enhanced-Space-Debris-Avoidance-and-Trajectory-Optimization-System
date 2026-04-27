@@ -3,13 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Space Debris and Route Calculation</title>
+    <title>Space Debris Avoidance & Trajectory Optimization System</title>
+    <meta name="description" content="AI-powered space debris avoidance and trajectory optimization using DDQL reinforcement learning and real TLE data.">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
 </head>
-<body>
+<body class="splash">
     <audio id="background-audio" autoplay loop>
         <source src="{{ url_for('static', filename='audio/background_music.mp3') }}" type="audio/mpeg">
-        Your browser doesn’t support audio—space vibes unavailable!
+        Your browser doesn't support audio—space vibes unavailable!
     </audio>
 
     <div id="welcome">Space Debris Avoidance and Trajectory Optimization System</div>
@@ -24,6 +25,6 @@
         </button>
     </div>
 
-    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script type="module" src="{{ url_for('static', filename='js/script.js') }}"></script>
 </body>
 </html>

@@ -2,14 +2,14 @@
 import os
 from datetime import datetime
 import numpy as np
+from src.config.settings import REPORTS_DIR
 
 
 class MissionReport:
-    def __init__(self,
-                 output_dir="/Users/thrishankkuntimaddi/Documents/Projects/SDARC-Enhanced/outputs/mission_reports"):
-        self.output_dir = output_dir
-        if not os.path.exists(output_dir):
-            os.makedirs(output_dir)
+    def __init__(self, output_dir=None):
+        self.output_dir = str(output_dir) if output_dir else str(REPORTS_DIR)
+        if not os.path.exists(self.output_dir):
+            os.makedirs(self.output_dir)
 
     def generate(self, rocket_type, launch_site, orbit_type, altitude_km, timestamp,
                  trajectory_data, collisions, rocket_params, optimized_trajectory_data=None, filename=None):
