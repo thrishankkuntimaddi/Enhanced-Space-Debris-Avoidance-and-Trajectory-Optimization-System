@@ -86,21 +86,29 @@ def _warm_presets():
     except BlockingIOError:
         WARM["owner"] = "another worker"
         return
+    WARM["stage"] = "importing planner"
+    t0 = time.time()
     try:
         P = planner()
+        WARM["import_s"] = round(time.time() - t0, 1)
     except Exception as e:
         WARM["error"] = f"{type(e).__name__}: {e}"
         app.logger.exception("planner import failed")
         return
-    for p in PRESETS:
+    for i, p in enumerate(PRESETS, 1):
         try:
+            WARM["stage"] = f"waiting for lock (preset {i})"
             with plan_lock():
+                WARM["stage"] = f"computing preset {i}: {p['label']}"
+                t1 = time.time()
                 P.run_preset(p)
+                WARM.setdefault("preset_s", []).append(round(time.time() - t1, 1))
                 P.release_memory()
         except Exception as e:  # warming is best-effort; a failure only means a slower first click
             WARM["error"] = f"{type(e).__name__}: {e}"
             app.logger.exception("preset warm-up failed for %s", p["label"])
         WARM["done"] += 1
+    WARM["stage"] = "done"
 
 
 if os.getenv("SDATOS_WARM", "1") == "1":
