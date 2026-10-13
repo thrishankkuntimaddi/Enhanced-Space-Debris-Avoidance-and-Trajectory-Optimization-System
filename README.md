@@ -120,9 +120,9 @@ Built to fit a 512 MB instance:
 |---|---|
 | Memory | One heavy plan at a time across all threads *and* worker processes (file lock); SGP4 and TCA refinement run in chunks; the catalog cache is freed and the heap trimmed after each plan. Measured peak for one plan: ~313 MB; an idle worker: ~47 MB. |
 | No PyTorch in production | The policy is served from `models/ddqn_policy.npz` with a numpy forward pass (13 µs). |
-| Slow CPU | Identical requests are served from a disk cache. The 4 demo presets are computed in the background at startup (by one worker), so the demo responds instantly. |
-| Payload | Responses are gzipped; the moving catalog ships as base64 float32. |
-| Ops | `/healthz` reports liveness and preset warm-up progress; `gunicorn.conf.py` sets 1 worker, 4 threads, a 300 s timeout and worker recycling. |
+| Slow CPU, ephemeral disk | The 4 demo presets ship precomputed in `data/preset_cache/` (`python -m src.cli presets`), so they answer instantly even right after a free-tier wake-up wipes the disk. Other identical requests are served from a disk cache. A brand-new mission takes ~70 s on Render's free CPU (~5 s on a laptop). |
+| Payload | Responses are gzipped; the moving catalog ships as int16 at 2 km resolution (~1 MB per plan). |
+| Ops | `/healthz` reports pid, uptime and warm-up stage/timings. Warm-up starts inside each worker on its first request, never at import: with `gunicorn --preload` the app is imported in the master and forked, and threads don't survive a fork. `gunicorn.conf.py` sets 1 worker, 4 threads, a 300 s timeout and worker recycling. |
 
 `render.yaml` describes the service as a Blueprint. For a service created in the dashboard, set **Start Command** to `gunicorn "src.interface.app:app"` (so `gunicorn.conf.py` applies) and **Build Command** to `pip install -r requirements.txt && python -m src.cli build`.
 
