@@ -8,6 +8,7 @@ End-to-end mission planning:
 from __future__ import annotations
 
 import base64
+import gzip
 import hashlib
 import json
 import time
@@ -69,11 +70,30 @@ def _conj_table(ctx_parts, combined, plan, spec, limit=15, report_km=25.0):
     return rows[:limit]
 
 
-def _b64(a: np.ndarray) -> str:
-    return base64.b64encode(np.ascontiguousarray(a, dtype=np.float32).tobytes()).decode()
+CLOUD_SCALE_KM = 2.0
+
+
+def _b64_i16(a: np.ndarray) -> str:
+    q = np.clip(np.rint(a), -32767, 32767).astype("<i2")
+    return base64.b64encode(np.ascontiguousarray(q).tobytes()).decode()
 
 
 CACHE_DIR = S.OUTPUTS_DIR / "plan_cache"
+PRESET_CACHE_DIR = S.DATA_DIR / "preset_cache"
+
+def export_preset_cache() -> list:
+    """Compute every preset and store it gzipped under data/preset_cache/ (committed)."""
+    PRESET_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    out = []
+    for p in PRESETS:
+        launch = datetime.fromisoformat(p["launch"]).replace(tzinfo=timezone.utc)
+        key = plan_cache_key(p["rocket"], p["alt"], launch, p.get("inc"), p["threats"], p["slip"], p["seed"])
+        rep = plan_mission(p["rocket"], p["alt"], launch, p.get("inc"), p["threats"], p["slip"], p["seed"])
+        path = PRESET_CACHE_DIR / f"{key}.json.gz"
+        path.write_bytes(gzip.compress(json.dumps(rep, default=str).encode(), 9))
+        out.append((p["label"], path.name, path.stat().st_size))
+    return out
+
 
 def run_preset(p: dict) -> dict:
     return plan_mission_cached(p["rocket"], p["alt"], datetime.fromisoformat(p["launch"]), p.get("inc"),
@@ -89,8 +109,9 @@ def plan_cache_key(rocket, target_alt_km, launch_time, inclination_deg, syntheti
 
 
 def _model_stamp() -> str:
+    """Content hash (not mtime: a fresh checkout gets new mtimes, which would orphan the cache)."""
     p = S.MODELS_DIR / "ddqn_policy.npz"
-    return str(int(p.stat().st_mtime)) if p.exists() else "greedy"
+    return hashlib.sha1(p.read_bytes()).hexdigest()[:12] if p.exists() else "greedy"
 
 
 def plan_mission_cached(rocket, target_alt_km, launch_time, inclination_deg=None, synthetic_threats=0,
@@ -101,6 +122,13 @@ def plan_mission_cached(rocket, target_alt_km, launch_time, inclination_deg=None
     path = CACHE_DIR / f"{key}.json"
     if path.exists():
         return json.loads(path.read_text())
+    shipped = PRESET_CACHE_DIR / f"{key}.json.gz"      # committed with the repo: survives restarts
+    if shipped.exists():
+        rep = json.loads(gzip.decompress(shipped.read_bytes()))
+        report_path = S.REPORTS_DIR / f"{rep['id']}.json"
+        if not report_path.exists():                  # so /report/<id> works after a wipe
+            report_path.write_text(json.dumps(rep, default=str))
+        return rep
     rep = plan_mission(rocket, target_alt_km, launch_time, inclination_deg, synthetic_threats, slip_allowed_s, seed)
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(".tmp")
@@ -235,5 +263,6 @@ def build_viz(spec, base, th_ctx, final_plan, before, after, n_cloud=1500, cloud
         "tracks": tracks,
         "cloud": {"n": len(sats), "steps": len(times), "dt": cloud_step_s,
                   "types": [type_code.get(t, 3) for t in sub["object_type"]],
-                  "pos_b64": _b64(r.transpose(1, 0, 2))},  # (steps, n, 3)
+                  "scale_km": CLOUD_SCALE_KM,  # int16 x 2 km: +-65,000 km range, invisible at globe scale
+                  "pos_i16_b64": _b64_i16(r.transpose(1, 0, 2) / CLOUD_SCALE_KM)},  # (steps, n, 3)
     }

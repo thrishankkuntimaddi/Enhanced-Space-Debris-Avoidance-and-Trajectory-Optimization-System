@@ -119,8 +119,10 @@ function loadViz(report) {
   }
 
   // moving catalog cloud
-  const raw = Uint8Array.from(atob(viz.cloud.pos_b64), (c) => c.charCodeAt(0));
-  cloudPos = new Float32Array(raw.buffer);
+  const raw = Uint8Array.from(atob(viz.cloud.pos_i16_b64), (c) => c.charCodeAt(0));
+  const q = new Int16Array(raw.buffer);
+  cloudPos = new Float32Array(q.length);
+  for (let i = 0; i < q.length; i++) cloudPos[i] = q[i] * viz.cloud.scale_km;
   const n = viz.cloud.n;
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n * 3), 3));

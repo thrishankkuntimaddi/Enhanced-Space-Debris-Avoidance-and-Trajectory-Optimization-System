@@ -7,6 +7,7 @@ Command line entry point.
     python -m src.cli validate              SGP4 back-test -> uncertainty model
     python -m src.cli plan --rocket "Falcon 9" --alt 550 --launch 2025-03-12T06:00 [--threats 3]
     python -m src.cli figures               regenerate evidence figures
+    python -m src.cli presets               recompute the committed demo-preset cache (data/preset_cache/)
     python -m src.cli all                   build + validate + figures
 Training / evaluation:  python -m src.rl.train ... ;  python -m src.rl.evaluate ...
 """
@@ -44,6 +45,12 @@ def cmd_figures(a):
     print("figures written to artifacts/")
 
 
+def cmd_presets(a):
+    from src.pipeline.planner import export_preset_cache
+    for label, name, size in export_preset_cache():
+        print(f"{size / 1e6:5.2f} MB  {name}  {label}")
+
+
 def cmd_plan(a):
     from src.pipeline.planner import plan_mission
     launch = datetime.fromisoformat(a.launch).replace(tzinfo=timezone.utc)
@@ -68,6 +75,7 @@ def main():
     sub.add_parser("build").set_defaults(fn=cmd_build)
     sub.add_parser("validate").set_defaults(fn=cmd_validate)
     sub.add_parser("figures").set_defaults(fn=cmd_figures)
+    sub.add_parser("presets").set_defaults(fn=cmd_presets)
     p = sub.add_parser("plan")
     p.add_argument("--rocket", required=True); p.add_argument("--alt", type=float, required=True)
     p.add_argument("--launch", required=True); p.add_argument("--inc", type=float)
