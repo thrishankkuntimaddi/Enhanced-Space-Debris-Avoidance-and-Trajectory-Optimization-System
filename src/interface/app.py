@@ -39,7 +39,7 @@ app.config["COMPRESS_MIMETYPES"] = ["application/json", "text/html", "text/css",
 Compress(app)
 
 SAFE_ID = re.compile(r"^[A-Za-z0-9_\-]+$")
-WARM = {"done": 0, "total": len(PRESETS)}
+WARM = {"done": 0, "total": len(PRESETS), "stage": "not started (first request starts it)"}
 STARTED = time.time()
 _IMPORT_LOCK = threading.Lock()
 
@@ -111,8 +111,20 @@ def _warm_presets():
     WARM["stage"] = "done"
 
 
-if os.getenv("SDATOS_WARM", "1") == "1":
-    threading.Thread(target=_warm_presets, daemon=True).start()
+_WARM_STARTED_PID = None
+
+
+@app.before_request
+def _start_warmup_once_per_worker():
+    """Start warm-up lazily, inside the worker. Never at import time: with gunicorn --preload the
+    module is imported in the master and then forked, and threads do not survive a fork (the
+    workers would inherit a frozen status, a half-imported planner and possibly a held lock)."""
+    global _WARM_STARTED_PID
+    if _WARM_STARTED_PID != os.getpid() and os.getenv("SDATOS_WARM", "1") == "1":
+        _WARM_STARTED_PID = os.getpid()
+        WARM.update({"done": 0, "stage": "starting"})
+        WARM.pop("error", None)
+        threading.Thread(target=_warm_presets, daemon=True).start()
 
 
 def catalog_window():
@@ -136,6 +148,15 @@ def console():
 def healthz():
     return jsonify({"ok": True, "presets_warm": WARM, "pid": os.getpid(),
                     "uptime_s": round(time.time() - STARTED), "python": platform.python_version()})
+
+
+def _reset_after_fork():
+    """A lock copied mid-acquire into a forked child would stay locked forever."""
+    global _IMPORT_LOCK, _THREAD_LOCK
+    _IMPORT_LOCK, _THREAD_LOCK = threading.Lock(), threading.Lock()
+
+
+os.register_at_fork(after_in_child=_reset_after_fork)
 
 
 @app.get("/evidence")
