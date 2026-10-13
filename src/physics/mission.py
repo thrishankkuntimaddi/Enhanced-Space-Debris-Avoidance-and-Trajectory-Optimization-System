@@ -17,8 +17,9 @@ from __future__ import annotations
 from dataclasses import dataclass, asdict, field
 from datetime import datetime, timedelta
 
+import csv
+
 import numpy as np
-import pandas as pd
 
 from src.config import settings as S
 from src.physics.frames import gmst, geodetic_to_ecef, ecef_to_teme
@@ -39,10 +40,10 @@ class Rocket:
 
 
 def load_rockets() -> list[Rocket]:
-    df = pd.read_csv(S.ROCKET_CSV)
-    return [Rocket(r.Rocket_Type, r.Launch_Site, float(r.x0), float(r.y0), r.Type_of_Orbit,
-                   float(r.Max_Altitude_km), float(r.Thrust_N), float(r.Mass_kg), float(r.Burn_Time_s),
-                   float(r.Total_Fuel_Capacity_kg)) for r in df.itertuples()]
+    with open(S.ROCKET_CSV, newline="", encoding="utf-8") as f:
+        return [Rocket(r["Rocket_Type"], r["Launch_Site"], float(r["x0"]), float(r["y0"]), r["Type_of_Orbit"],
+                       float(r["Max_Altitude_km"]), float(r["Thrust_N"]), float(r["Mass_kg"]),
+                       float(r["Burn_Time_s"]), float(r["Total_Fuel_Capacity_kg"])) for r in csv.DictReader(f)]
 
 
 def get_rocket(name: str) -> Rocket:

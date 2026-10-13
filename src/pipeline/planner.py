@@ -22,6 +22,7 @@ from src.config import settings as S
 from src.data.propagation_validation import load_sigma_model
 from src.data.tle_pipeline import load_catalog
 from src.physics.frames import gmst, to_jd
+from src.pipeline.presets import PRESETS
 from src.physics.mission import MissionSpec, ManeuverPlan, get_rocket, maneuver_dv_cost_ms, trajectory, orbit_inclination_deg
 from src.rl.env import AvoidanceEnv, Scenario, screen_scenario
 from src.rl.policies import GreedyLookahead, GuardedPolicy, NumpyQPolicy
@@ -32,6 +33,18 @@ from src.screening.conjunction import build_context, risk_level
 @lru_cache(maxsize=1)
 def catalog_cached():
     return load_catalog()
+
+
+def release_memory():
+    """Drop the cached catalog and hand freed heap back to the OS (matters on 512 MB hosts)."""
+    import ctypes
+    import gc
+    catalog_cached.cache_clear()
+    gc.collect()
+    try:
+        ctypes.CDLL("libc.so.6").malloc_trim(0)   # Linux/glibc only
+    except OSError:
+        pass
 
 
 @lru_cache(maxsize=1)
@@ -61,19 +74,6 @@ def _b64(a: np.ndarray) -> str:
 
 
 CACHE_DIR = S.OUTPUTS_DIR / "plan_cache"
-
-# Demo presets: shown in the console and pre-computed at startup so they answer instantly.
-PRESETS = [
-    {"label": "Real catalog · Falcon 9 → 550 km (Starlink shell)", "rocket": "Falcon 9", "alt": 550,
-     "launch": "2025-03-12T06:00", "threats": 0, "slip": 600, "seed": 0},
-    {"label": "Real catalog · PSLV → 700 km SSO 97.5°", "rocket": "PSLV", "alt": 700, "inc": 97.5,
-     "launch": "2025-03-11T04:30", "threats": 0, "slip": 300, "seed": 0},
-    {"label": "Stress test · Electron 500 km, 3 threat events", "rocket": "Electron", "alt": 500,
-     "launch": "2025-03-12T09:00", "threats": 3, "slip": 600, "seed": 4},
-    {"label": "Stress test · instantaneous window, 4 events", "rocket": "Vega", "alt": 600,
-     "launch": "2025-03-11T18:00", "threats": 4, "slip": 0, "seed": 7},
-]
-
 
 def run_preset(p: dict) -> dict:
     return plan_mission_cached(p["rocket"], p["alt"], datetime.fromisoformat(p["launch"]), p.get("inc"),

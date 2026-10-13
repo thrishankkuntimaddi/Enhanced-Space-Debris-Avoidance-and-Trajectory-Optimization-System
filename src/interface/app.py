@@ -29,7 +29,7 @@ from flask_compress import Compress
 
 from src.config import settings as S
 from src.physics.mission import load_rockets
-from src.pipeline.planner import PRESETS, plan_mission_cached, run_preset
+from src.pipeline.presets import PRESETS          # light; the planner (pandas, scipy) loads lazily
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
 app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
@@ -66,11 +66,20 @@ def plan_lock(blocking: bool = True):
 
 
 def _warm_presets():
+    """Exactly one worker owns warm-up (non-blocking file lock held for the whole run)."""
+    S.OUTPUTS_DIR.mkdir(parents=True, exist_ok=True)
+    owner = open(S.OUTPUTS_DIR / ".warm.lock", "w")
+    try:
+        fcntl.flock(owner, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        WARM["owner"] = "another worker"
+        return
+    from src.pipeline.planner import run_preset, release_memory
     for p in PRESETS:
         try:
-            with plan_lock() as ok:
-                if ok:
-                    run_preset(p)          # served from the disk cache if another worker warmed it
+            with plan_lock():
+                run_preset(p)
+                release_memory()
         except Exception as e:  # warming is best-effort; a failure only means a slower first click
             app.logger.warning("preset warm-up failed for %s: %s", p["label"], e)
         WARM["done"] += 1
@@ -149,8 +158,10 @@ def api_plan():
         lo, hi = catalog_window()
         if not lo <= launch <= hi:
             raise ValueError(f"Launch time must be inside the TLE validity window {lo:%Y-%m-%d %H:%M} .. {hi:%Y-%m-%d %H:%M} UTC")
+        from src.pipeline.planner import plan_mission_cached, release_memory
         with plan_lock():
             rep = plan_mission_cached(d["rocket"], alt, launch, inc, threats, slip, int(d.get("seed", 0)))
+            release_memory()
     except (KeyError, ValueError) as e:
         return jsonify({"error": str(e)}), 400
     return jsonify(rep)
