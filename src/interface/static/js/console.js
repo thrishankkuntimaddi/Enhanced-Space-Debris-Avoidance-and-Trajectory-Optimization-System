@@ -221,12 +221,7 @@ async function init() {
       <div>${q.window_days}-day window ending <b>${q.reference_epoch.slice(0, 16).replace('T', ' ')}</b> UTC</div>
       <div>source: ${q.sources.join(', ')}</div>`;
   }
-  const presets = [
-    { label: 'Real catalog · Falcon 9 → 550 km (Starlink shell)', rocket: 'Falcon 9', alt: 550, launch: '2025-03-12T06:00', threats: 0, slip: 600 },
-    { label: 'Real catalog · PSLV → 700 km SSO 97.5°', rocket: 'PSLV', alt: 700, inc: 97.5, launch: '2025-03-11T04:30', threats: 0, slip: 300 },
-    { label: 'Stress test · Electron 500 km, 3 threat events', rocket: 'Electron', alt: 500, launch: '2025-03-12T09:00', threats: 3, slip: 600, seed: 4 },
-    { label: 'Stress test · instantaneous window, 4 events', rocket: 'Vega', alt: 600, launch: '2025-03-11T18:00', threats: 4, slip: 0, seed: 7 },
-  ];
+  const presets = meta.presets;
   for (const p of presets) {
     const b = document.createElement('button');
     b.type = 'button'; b.textContent = p.label;
@@ -245,7 +240,7 @@ $('mission-form').onsubmit = async (e) => {
   e.preventDefault();
   $('go').disabled = true;
   $('busy').classList.remove('hidden');
-  $('busy-msg').textContent = 'Propagating catalog & screening conjunctions…';
+  $('busy-msg').textContent = 'Propagating the catalog & screening conjunctions… (a new mission can take up to a minute on the free server; presets are instant)';
   try {
     const res = await fetch('/api/plan', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },

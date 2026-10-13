@@ -1,9 +1,9 @@
-# Serving / pipeline (no deep-learning framework needed at inference: the policy runs in numpy)
+# Serving / pipeline. No deep-learning framework at inference: the policy runs in numpy.
 numpy>=2.0
 pandas>=2.2
 scipy>=1.13
 sgp4>=2.24
 requests>=2.32
 flask>=3.0
+flask-compress>=1.15
 gunicorn>=22.0
-matplotlib>=3.8

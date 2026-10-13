@@ -61,7 +61,7 @@ def altitude_band_filter(cat: pd.DataFrame, lo_km: float, hi_km: float, margin_k
 
 def build_context(spec: MissionSpec, catalog: pd.DataFrame, slip_max_s: float = 600.0,
                   slip_step_s: float = 60.0, dalt_max_km: float = 10.0, keep_km: float = 150.0,
-                  chunk: int = 2000) -> ScreeningContext:
+                  chunk: int = 500) -> ScreeningContext:
     dt = spec.dt_s
     slip_grid = np.arange(-slip_max_s, slip_max_s + 1e-9, slip_step_s)
     grid = np.arange(-slip_max_s, slip_max_s + spec.duration_s + dt, dt)
@@ -85,6 +85,7 @@ def build_context(spec: MissionSpec, catalog: pd.DataFrame, slip_max_s: float = 
         sats = [Satrec.twoline2rv(a, b) for a, b in zip(sub["line1"], sub["line2"])]
         err, r, _ = SatrecArray(sats).sgp4(jd, fr)          # 2. vectorized SGP4
         r = r.astype(np.float32)
+        del _
         r[err != 0] = np.nan
         best = np.full(len(sub), np.inf, dtype=np.float32)
         for si, s in enumerate(slip_grid):                   # 3. proximity prune

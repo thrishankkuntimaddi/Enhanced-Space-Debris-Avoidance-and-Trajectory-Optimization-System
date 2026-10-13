@@ -8,6 +8,7 @@ End-to-end mission planning:
 from __future__ import annotations
 
 import base64
+import hashlib
 import json
 import time
 import uuid
@@ -57,6 +58,55 @@ def _conj_table(ctx_parts, combined, plan, spec, limit=15, report_km=25.0):
 
 def _b64(a: np.ndarray) -> str:
     return base64.b64encode(np.ascontiguousarray(a, dtype=np.float32).tobytes()).decode()
+
+
+CACHE_DIR = S.OUTPUTS_DIR / "plan_cache"
+
+# Demo presets: shown in the console and pre-computed at startup so they answer instantly.
+PRESETS = [
+    {"label": "Real catalog · Falcon 9 → 550 km (Starlink shell)", "rocket": "Falcon 9", "alt": 550,
+     "launch": "2025-03-12T06:00", "threats": 0, "slip": 600, "seed": 0},
+    {"label": "Real catalog · PSLV → 700 km SSO 97.5°", "rocket": "PSLV", "alt": 700, "inc": 97.5,
+     "launch": "2025-03-11T04:30", "threats": 0, "slip": 300, "seed": 0},
+    {"label": "Stress test · Electron 500 km, 3 threat events", "rocket": "Electron", "alt": 500,
+     "launch": "2025-03-12T09:00", "threats": 3, "slip": 600, "seed": 4},
+    {"label": "Stress test · instantaneous window, 4 events", "rocket": "Vega", "alt": 600,
+     "launch": "2025-03-11T18:00", "threats": 4, "slip": 0, "seed": 7},
+]
+
+
+def run_preset(p: dict) -> dict:
+    return plan_mission_cached(p["rocket"], p["alt"], datetime.fromisoformat(p["launch"]), p.get("inc"),
+                               p["threats"], p["slip"], p["seed"])
+
+
+def plan_cache_key(rocket, target_alt_km, launch_time, inclination_deg, synthetic_threats, slip_allowed_s, seed) -> str:
+    """Deterministic inputs -> deterministic plan, so identical requests are served from disk."""
+    raw = json.dumps([rocket, float(target_alt_km), launch_time.strftime("%Y-%m-%dT%H:%M"),
+                      None if inclination_deg is None else float(inclination_deg), int(synthetic_threats),
+                      float(slip_allowed_s), int(seed), _model_stamp()])
+    return hashlib.sha1(raw.encode()).hexdigest()[:16]
+
+
+def _model_stamp() -> str:
+    p = S.MODELS_DIR / "ddqn_policy.npz"
+    return str(int(p.stat().st_mtime)) if p.exists() else "greedy"
+
+
+def plan_mission_cached(rocket, target_alt_km, launch_time, inclination_deg=None, synthetic_threats=0,
+                        slip_allowed_s=600.0, seed=0) -> dict:
+    if launch_time.tzinfo is None:
+        launch_time = launch_time.replace(tzinfo=timezone.utc)
+    key = plan_cache_key(rocket, target_alt_km, launch_time, inclination_deg, synthetic_threats, slip_allowed_s, seed)
+    path = CACHE_DIR / f"{key}.json"
+    if path.exists():
+        return json.loads(path.read_text())
+    rep = plan_mission(rocket, target_alt_km, launch_time, inclination_deg, synthetic_threats, slip_allowed_s, seed)
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text(json.dumps(rep, default=str))
+    tmp.replace(path)
+    return rep
 
 
 def plan_mission(rocket: str, target_alt_km: float, launch_time: datetime, inclination_deg: float | None = None,
@@ -143,7 +193,7 @@ def plan_mission(rocket: str, target_alt_km: float, launch_time: datetime, incli
     return report
 
 
-def build_viz(spec, base, th_ctx, final_plan, before, after, n_cloud=2500, cloud_step_s=60.0):
+def build_viz(spec, base, th_ctx, final_plan, before, after, n_cloud=1500, cloud_step_s=90.0):
     """Payload for the three.js scene (TEME km; Earth rotation via GMST)."""
     tau = spec.tau[::3]
     nom, _ = trajectory(spec, ManeuverPlan(), tau)

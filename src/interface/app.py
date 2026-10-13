@@ -5,27 +5,52 @@ SDATOS web service.
   GET  /                      mission console (three.js)
   GET  /evidence              data quality, prediction back-test, training & evaluation results
   GET  /report/<id>           printable mission report
-  GET  /api/meta              rockets, valid launch window, data provenance, model card
-  POST /api/plan              run the full pipeline for one mission
+  GET  /healthz               liveness + whether presets are warm
+  GET  /api/meta              rockets, valid launch window, presets, data provenance, model card
+  POST /api/plan              run the full pipeline for one mission (cached by inputs)
   GET  /api/report/<id>       report JSON
   GET  /artifacts/<file>      committed evidence (figures, metrics JSON)
+
+Built for a small instance (Render free tier, 512 MB): one heavy plan at a time behind a lock,
+gzip on responses, identical requests served from a disk cache, demo presets warmed at startup.
 """
 from __future__ import annotations
 
 import json
+import os
 import re
+import threading
 from datetime import datetime, timezone
 
 from flask import Flask, abort, jsonify, render_template, request, send_from_directory
+from flask_compress import Compress
 
 from src.config import settings as S
 from src.physics.mission import load_rockets
-from src.pipeline.planner import catalog_window, plan_mission
+from src.pipeline.planner import PRESETS, catalog_window, plan_mission_cached, run_preset
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
 app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
+app.config["COMPRESS_MIMETYPES"] = ["application/json", "text/html", "text/css", "application/javascript"]
+Compress(app)
 
 SAFE_ID = re.compile(r"^[A-Za-z0-9_\-]+$")
+PLAN_LOCK = threading.Lock()          # one heavy computation at a time keeps memory bounded
+WARM = {"done": 0, "total": len(PRESETS)}
+
+
+def _warm_presets():
+    for p in PRESETS:
+        try:
+            with PLAN_LOCK:
+                run_preset(p)
+        except Exception as e:  # warming is best-effort; a failure only means a slower first click
+            app.logger.warning("preset warm-up failed for %s: %s", p["label"], e)
+        WARM["done"] += 1
+
+
+if os.getenv("SDATOS_WARM", "1") == "1":
+    threading.Thread(target=_warm_presets, daemon=True).start()
 
 
 def _artifact(name):
@@ -36,6 +61,11 @@ def _artifact(name):
 @app.get("/")
 def console():
     return render_template("console.html")
+
+
+@app.get("/healthz")
+def healthz():
+    return jsonify({"ok": True, "presets_warm": WARM})
 
 
 @app.get("/evidence")
@@ -61,12 +91,13 @@ def report_page(rid):
 def meta():
     lo, hi = catalog_window()
     rockets = [{"name": r.name, "site": r.launch_site, "lat": r.lat_deg, "lon": r.lon_deg,
-                "orbit": r.orbit_type, "max_alt_km": r.max_alt_km} for r in load_rockets() if r.orbit_type != "Interplanetary"]
+                "orbit": r.orbit_type, "max_alt_km": r.max_alt_km}
+               for r in load_rockets() if r.orbit_type != "Interplanetary"]
     ev = _artifact("evaluation.json") or {}
-    return jsonify({"rockets": rockets,
+    return jsonify({"rockets": rockets, "presets": PRESETS,
                     "window": {"min": lo.strftime("%Y-%m-%dT%H:%M"), "max": hi.strftime("%Y-%m-%dT%H:%M")},
                     "quality": _artifact("data_quality.json"),
-                    "model": {k: v for k, v in (ev.get("policies") or {}).items()}})
+                    "model": ev.get("policies") or {}})
 
 
 @app.post("/api/plan")
@@ -84,7 +115,8 @@ def api_plan():
         lo, hi = catalog_window()
         if not lo <= launch <= hi:
             raise ValueError(f"Launch time must be inside the TLE validity window {lo:%Y-%m-%d %H:%M} .. {hi:%Y-%m-%d %H:%M} UTC")
-        rep = plan_mission(d["rocket"], alt, launch, inc, threats, slip, int(d.get("seed", 0)))
+        with PLAN_LOCK:
+            rep = plan_mission_cached(d["rocket"], alt, launch, inc, threats, slip, int(d.get("seed", 0)))
     except (KeyError, ValueError) as e:
         return jsonify({"error": str(e)}), 400
     return jsonify(rep)
@@ -103,4 +135,4 @@ def artifacts(name):
 
 
 if __name__ == "__main__":
-    app.run(debug=False, port=5000)
+    app.run(debug=False, port=int(os.getenv("PORT", "5000")))
