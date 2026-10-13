@@ -81,7 +81,7 @@ Building the context takes ~4–8 s per mission. After that, **re-screening any 
 | Grid search (80-scenario subset) | 100% | 100% | 0.57 | −2.28 | 294 | 4,738 |
 
 **What these results support:**
-* The guarded DDQN is **100% safe** on held-out missions. It gets **~92% of the brute-force grid's cost improvement with 56× fewer screenings**, and needs 2.6× fewer screenings than greedy search. In a real operations setting, each screening runs a high-fidelity ephemeris against the whole catalog and takes minutes, so the number of screenings is the cost that matters.
+* The guarded DDQN is **100% safe** on held-out missions. It reaches **92% of the brute-force grid's objective value (−2.11 vs −2.28 on the same 80 scenarios) with 56× fewer screenings**, and needs 2.6× fewer screenings than greedy search. In a real operations setting, each screening runs a high-fidelity ephemeris against the whole catalog and takes minutes, so the number of screenings is the cost that matters.
 * **Greedy lookahead finds better plans** (93% vs 82% clean). Conjunctions are very sharply localized in decision space, so a one-step search almost always finds a fix. The honest value of the learned policy is amortized cost, not better plans.
 * **DDQN vs vanilla DQN is a tie here.** With ≤10-step episodes, there is little bootstrapping for overestimation bias to build up in. Both gaps fall to ~0.1–0.15 (see figure).
 * The guard (re-screen the committed plan, fall back to greedy if anything is still RED) triggered in 0.5% of cases and turned 99.5% into 100%.
