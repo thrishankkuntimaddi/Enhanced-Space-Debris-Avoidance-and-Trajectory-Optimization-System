@@ -108,6 +108,24 @@ export SPACETRACK_USERNAME=... SPACETRACK_PASSWORD=...
 python -m src.cli fetch --history              # pull a fresh 7-day history from Space-Track
 ```
 
+## Deployment
+
+* **Live app (Render):** https://enhanced-space-debris-avoidance-and.onrender.com (free tier: the first visit after idle takes ~1 min to wake up)
+* **Landing page (GitHub Pages, `docs/`):** https://thrishankkuntimaddi.github.io/Enhanced-Space-Debris-Avoidance-and-Trajectory-Optimization-System/
+* **CI:** `.github/workflows/ci.yml` runs the test suite on every push; `collect-tle.yml` pulls a TLE snapshot daily.
+
+Built to fit a 512 MB instance:
+
+| Concern | What the app does |
+|---|---|
+| Memory | One heavy plan at a time across all threads *and* worker processes (file lock); SGP4 and TCA refinement run in chunks; the catalog cache is freed and the heap trimmed after each plan. Measured peak for one plan: ~313 MB; an idle worker: ~47 MB. |
+| No PyTorch in production | The policy is served from `models/ddqn_policy.npz` with a numpy forward pass (13 µs). |
+| Slow CPU | Identical requests are served from a disk cache. The 4 demo presets are computed in the background at startup (by one worker), so the demo responds instantly. |
+| Payload | Responses are gzipped; the moving catalog ships as base64 float32. |
+| Ops | `/healthz` reports liveness and preset warm-up progress; `gunicorn.conf.py` sets 1 worker, 4 threads, a 300 s timeout and worker recycling. |
+
+`render.yaml` describes the service as a Blueprint. For a service created in the dashboard, set **Start Command** to `gunicorn "src.interface.app:app"` (so `gunicorn.conf.py` applies) and **Build Command** to `pip install -r requirements.txt && python -m src.cli build`.
+
 ## Layout
 
 ```
