@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SDATOS — Space Debris Avoidance & Trajectory Optimization System</title>
-    <meta name="description" content="AI-powered space debris avoidance and trajectory optimization using DDQL reinforcement learning and real TLE satellite data.">
+    <meta name="description" content="Launch conjunction screening against the full TLE catalog with a Double DQN avoidance planner and measured prediction accuracy.">
     <meta property="og:title" content="SDATOS — Space Debris Avoidance System">
     <meta property="og:description" content="Real-time collision detection and AI trajectory optimization for spacecraft launch planning.">
     <style>
@@ -285,32 +285,32 @@
             <div class="card">
                 <div class="card-icon">🛰️</div>
                 <h3>Real TLE Ingestion</h3>
-                <p>Upload or paste live Two-Line Element sets from Space-Track.org. The system preprocesses and validates thousands of debris objects in seconds.</p>
+                <p>Daily Space-Track.org pulls build a 7-day window: 59,557 element sets validated and de-duplicated into a 23,805-object catalog, joined with SATCAT, with maneuver detection.</p>
             </div>
             <div class="card">
                 <div class="card-icon">⚡</div>
-                <h3>DDQL Optimization</h3>
-                <p>A Double Deep Q-Learning agent learns to adjust the rocket's trajectory in real-time, minimizing collision probability while preserving orbital insertion.</p>
+                <h3>Double DQN Planner</h3>
+                <p>A Double DQN agent chooses launch slip, insertion altitude and phasing burns. On 200 held-out scenarios, every plan was safe after verification, using 56&times; fewer conjunction screenings than brute-force search.</p>
             </div>
             <div class="card">
                 <div class="card-icon">🌍</div>
                 <h3>3D Visualization</h3>
-                <p>Interactive Plotly 3D globe renders the full trajectory — burn phase, coast phase, target ring, and collision markers — with playback animation.</p>
+                <p>A three.js globe rotating at sidereal rate shows the moving catalog, the nominal and planned trajectories, and the tracks of objects involved in conjunctions, with a playback timeline.</p>
             </div>
             <div class="card">
                 <div class="card-icon">📊</div>
                 <h3>Mission Reports</h3>
-                <p>Automatically generated text reports covering rocket params, trajectory equations, collision events, and post-optimization stats.</p>
+                <p>Printable reports covering data provenance, the screening funnel, conjunctions with RTN miss vectors and Pc, the agent's decision trace, and before/after risk.</p>
             </div>
             <div class="card">
-                <div class="card-icon">🔥</div>
-                <h3>Firebase Analytics</h3>
-                <p>Every session is tracked with Google Analytics and Firestore — mission outcomes, collision counts, and optimization effectiveness are logged in real-time.</p>
+                <div class="card-icon">🎯</div>
+                <h3>Measured Accuracy</h3>
+                <p>SGP4 back-tested on 25,840 prediction pairs: median LEO error 0.11 km at 6 h and 0.59 km at 24 h, mostly along-track. That fit sets the uncertainty used for collision probability.</p>
             </div>
             <div class="card">
                 <div class="card-icon">🧪</div>
-                <h3>Dummy TLE Testing</h3>
-                <p>No Space-Track account? Generate synthetic collision-prone TLEs placed directly on your trajectory to test the full pipeline instantly.</p>
+                <h3>Stress Testing</h3>
+                <p>Inject synthetic crossings and fragment clouds onto the nominal path, on top of the real catalog, with launch windows from instantaneous to &plusmn;10 min.</p>
             </div>
         </div>
     </section>

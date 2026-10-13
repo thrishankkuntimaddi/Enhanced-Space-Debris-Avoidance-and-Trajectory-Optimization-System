@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mission Report — SDATOS</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}?v=30">
+  <style>
+    /* Report-specific styles */
+    .report-wrap {
+      max-width: 980px; margin: 0 auto; padding: 32px 24px 64px;
+    }
+    .report-header {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      margin-bottom: 28px; padding-bottom: 20px;
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap; gap: 16px;
+    }
+    .report-title-block h1 {
+      font-family: var(--display, 'Bebas Neue', sans-serif);
+      font-size: 42px; letter-spacing: .1em; color: var(--text-hi, #f0f0f8);
+      line-height: 1;
+    }
+    .report-title-block p {
+      font-size: 10px; letter-spacing: .18em; color: var(--text-lo, #50505e);
+      margin-top: 6px; text-transform: uppercase;
+    }
+    .report-badges { display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
+
+    #report-content {
+      background: var(--panel, #0e0e12);
+      border: 1px solid var(--border, #18181f);
+      padding: 28px 32px;
+      font-size: 12px; line-height: 2;
+      color: var(--text, #a8a8b8);
+      white-space: pre-wrap;
+      position: relative;
+      counter-reset: line;
+    }
+    #report-content::before {
+      content: '';
+      position: absolute; top: -1px; left: -1px;
+      width: 14px; height: 14px;
+      border-top: 2px solid var(--accent-b, rgba(0,229,255,.28));
+      border-left: 2px solid var(--accent-b, rgba(0,229,255,.28));
+    }
+    #report-content::after {
+      content: '';
+      position: absolute; bottom: -1px; right: -1px;
+      width: 14px; height: 14px;
+      border-bottom: 2px solid var(--accent-b, rgba(0,229,255,.28));
+      border-right: 2px solid var(--accent-b, rgba(0,229,255,.28));
+    }
+
+    /* Highlight key lines */
+    .report-line-accent  { color: var(--accent, #00e5ff); }
+    .report-line-green   { color: var(--green, #00ff88); }
+    .report-line-red     { color: var(--red, #ff2d55); }
+    .report-line-amber   { color: var(--amber, #ffcc00); }
+
+    .report-actions {
+      display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap;
+    }
+
+    /* Stats grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px; margin-bottom: 20px;
+    }
+    .stat-card {
+      background: var(--panel, #0e0e12);
+      border: 1px solid var(--border, #18181f);
+      padding: 16px;
+      position: relative;
+    }
+    .stat-card::before {
+      content: '';
+      position: absolute; top: -1px; left: -1px;
+      width: 8px; height: 8px;
+      border-top: 1px solid var(--accent-b, rgba(0,229,255,.28));
+      border-left: 1px solid var(--accent-b, rgba(0,229,255,.28));
+    }
+    .stat-card .s-label {
+      font-size: 9px; letter-spacing: .18em; text-transform: uppercase;
+      color: var(--text-lo, #50505e); margin-bottom: 6px;
+    }
+    .stat-card .s-val {
+      font-size: 22px; font-family: var(--display,'Bebas Neue',sans-serif);
+      letter-spacing: .06em; color: var(--text-hi, #f0f0f8);
+    }
+    .stat-card .s-unit {
+      font-size: 10px; color: var(--text-lo, #50505e); margin-left: 4px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="hdr-logo" style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:.12em;color:#f0f0f8;display:flex;align-items:center;gap:12px;">
+    SDATOS <span style="font-family:'Space Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.18px;color:#00e5ff;border:1px solid rgba(0,229,255,.28);padding:2px 8px;">Mission Report</span>
+  </div>
+  <span class="hdr-clock" id="hdr-clock">--:--:-- UTC</span>
+</header>
+
+<div class="report-wrap">
+
+  <!-- Report header -->
+  <div class="report-header">
+    <div class="report-title-block">
+      <h1>Mission Report</h1>
+      <p>Space Debris Avoidance &amp; Trajectory Optimization System // v2.0.0</p>
+    </div>
+    <div class="report-badges">
+      <span class="tag tag-green" id="status-badge">COMPLETE</span>
+      <span class="tag tag-accent" id="gen-time" style="font-size:9px;">
+        {{ report_content[:22] if report_content else 'GENERATED NOW' }}
+      </span>
+    </div>
+  </div>
+
+  <!-- Extracted stat cards (populated by JS) -->
+  <div class="stats-grid" id="stats-grid" style="display:none;">
+    <div class="stat-card">
+      <div class="s-label">Collisions Detected</div>
+      <div class="s-val" id="stat-collisions">—<span class="s-unit"></span></div>
+    </div>
+    <div class="stat-card">
+      <div class="s-label">Target Altitude</div>
+      <div class="s-val" id="stat-altitude">—<span class="s-unit">km</span></div>
+    </div>
+    <div class="stat-card">
+      <div class="s-label">Mission Success Rate</div>
+      <div class="s-val" id="stat-rate">—<span class="s-unit">%</span></div>
+    </div>
+    <div class="stat-card">
+      <div class="s-label">Journey Time</div>
+      <div class="s-val" id="stat-time">—<span class="s-unit">s</span></div>
+    </div>
+  </div>
+
+  <!-- Raw report content -->
+  <div id="report-content">{{ report_content }}</div>
+
+  <!-- Actions -->
+  <div class="report-actions">
+    <button onclick="window.history.back()">← Back to Mission Control</button>
+    <button class="btn-confirm" onclick="downloadReport()">⬇ Download Report</button>
+    <button class="btn-accent" onclick="window.location.href='/'">⬡ New Mission</button>
+  </div>
+
+</div>
+
+<!-- Footer -->
+<footer>
+  <span>SDATOS // v2.0.0</span>
+  <span>©2025 Space Debris Avoidance &amp; Trajectory Optimization System</span>
+  <span><span class="dot"></span>REPORT READY</span>
+</footer>
+
+<script>
+  // Clock
+  function tick() {
+    const t = new Date();
+    const el = document.getElementById('hdr-clock');
+    if (el) el.textContent = [t.getUTCHours(),t.getUTCMinutes(),t.getUTCSeconds()]
+      .map(n=>String(n).padStart(2,'0')).join(':') + ' UTC';
+  }
+  tick(); setInterval(tick, 1000);
+
+  // Parse stat values from report content
+  const raw = document.getElementById('report-content').textContent;
+
+  function extract(pattern) {
+    const m = raw.match(pattern);
+    return m ? m[1] : '—';
+  }
+
+  const collisions = extract(/Collisions Detected[:\s]+(\d+)/);
+  const altitude   = extract(/Target Altitude[:\s]+([\d.]+)/);
+  const rate       = extract(/Mission Success Rate[:\s]+([\d.]+)/);
+  const journeyT   = extract(/Total Journey Time[:\s]+([\d.]+)/);
+
+  if (collisions !== '—' || altitude !== '—') {
+    document.getElementById('stats-grid').style.display = 'grid';
+    document.getElementById('stat-collisions').childNodes[0].textContent = collisions;
+    document.getElementById('stat-altitude').childNodes[0].textContent   = altitude;
+    document.getElementById('stat-rate').childNodes[0].textContent       = rate;
+    document.getElementById('stat-time').childNodes[0].textContent       = journeyT.split('.')[0];
+
+    // Color code collision count
+    const c = parseInt(collisions);
+    if (!isNaN(c)) {
+      const el = document.getElementById('stat-collisions');
+      el.style.color = c === 0 ? 'var(--green)' : c < 5 ? 'var(--amber)' : 'var(--red)';
+    }
+
+    // Color success rate badge
+    const r = parseFloat(rate);
+    if (!isNaN(r)) {
+      const badge = document.getElementById('status-badge');
+      if (r >= 90) { badge.textContent = 'SUCCESS'; badge.className = 'tag tag-green'; }
+      else if (r >= 50) { badge.textContent = 'PARTIAL'; badge.className = 'tag tag-amber'; }
+      else { badge.textContent = 'FAILED'; badge.className = 'tag tag-red'; }
+    }
+  }
+
+  // Syntax-highlight key report lines
+  const contentEl = document.getElementById('report-content');
+  if (contentEl) {
+    const lines = contentEl.textContent.split('\n');
+    const highlighted = lines.map(line => {
+      if (line.includes('===') || line.includes('Mission Success Rate')) return `<span style="color:var(--accent)">${line}</span>`;
+      if (line.includes('Status: Success') || line.includes('No collisions')) return `<span style="color:var(--green)">${line}</span>`;
+      if (line.includes('Collision') && !line.includes('0')) return `<span style="color:var(--red)">${line}</span>`;
+      if (line.includes('Optimized') || line.includes('Post-Optimization')) return `<span style="color:var(--amber)">${line}</span>`;
+      return line;
+    });
+    contentEl.innerHTML = highlighted.join('\n');
+  }
+
+  // Download
+  function downloadReport() {
+    const text = raw;
+    const blob = new Blob([text], {type:'text/plain'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'sdatos_mission_report_' + Date.now() + '.txt';
+    a.click();
+  }
+</script>
+</body>
+</html>

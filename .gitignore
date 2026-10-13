@@ -2,6 +2,10 @@ __pycache__/
 *.pyc
 *.pyo
 .DS_Store
+.venv/
 outputs/
-models/
 data/tle_data.txt
+data/tle_history.csv
+data/catalog.csv
+inputs/snapshots/
+models/*.pt

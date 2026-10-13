@@ -3,232 +3,92 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mission Report — SDATOS</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}?v=30">
-  <style>
-    /* Report-specific styles */
-    .report-wrap {
-      max-width: 980px; margin: 0 auto; padding: 32px 24px 64px;
-    }
-    .report-header {
-      display: flex; align-items: flex-start; justify-content: space-between;
-      margin-bottom: 28px; padding-bottom: 20px;
-      border-bottom: 1px solid var(--border);
-      flex-wrap: wrap; gap: 16px;
-    }
-    .report-title-block h1 {
-      font-family: var(--display, 'Bebas Neue', sans-serif);
-      font-size: 42px; letter-spacing: .1em; color: var(--text-hi, #f0f0f8);
-      line-height: 1;
-    }
-    .report-title-block p {
-      font-size: 10px; letter-spacing: .18em; color: var(--text-lo, #50505e);
-      margin-top: 6px; text-transform: uppercase;
-    }
-    .report-badges { display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
-
-    #report-content {
-      background: var(--panel, #0e0e12);
-      border: 1px solid var(--border, #18181f);
-      padding: 28px 32px;
-      font-size: 12px; line-height: 2;
-      color: var(--text, #a8a8b8);
-      white-space: pre-wrap;
-      position: relative;
-      counter-reset: line;
-    }
-    #report-content::before {
-      content: '';
-      position: absolute; top: -1px; left: -1px;
-      width: 14px; height: 14px;
-      border-top: 2px solid var(--accent-b, rgba(0,229,255,.28));
-      border-left: 2px solid var(--accent-b, rgba(0,229,255,.28));
-    }
-    #report-content::after {
-      content: '';
-      position: absolute; bottom: -1px; right: -1px;
-      width: 14px; height: 14px;
-      border-bottom: 2px solid var(--accent-b, rgba(0,229,255,.28));
-      border-right: 2px solid var(--accent-b, rgba(0,229,255,.28));
-    }
-
-    /* Highlight key lines */
-    .report-line-accent  { color: var(--accent, #00e5ff); }
-    .report-line-green   { color: var(--green, #00ff88); }
-    .report-line-red     { color: var(--red, #ff2d55); }
-    .report-line-amber   { color: var(--amber, #ffcc00); }
-
-    .report-actions {
-      display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap;
-    }
-
-    /* Stats grid */
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 12px; margin-bottom: 20px;
-    }
-    .stat-card {
-      background: var(--panel, #0e0e12);
-      border: 1px solid var(--border, #18181f);
-      padding: 16px;
-      position: relative;
-    }
-    .stat-card::before {
-      content: '';
-      position: absolute; top: -1px; left: -1px;
-      width: 8px; height: 8px;
-      border-top: 1px solid var(--accent-b, rgba(0,229,255,.28));
-      border-left: 1px solid var(--accent-b, rgba(0,229,255,.28));
-    }
-    .stat-card .s-label {
-      font-size: 9px; letter-spacing: .18em; text-transform: uppercase;
-      color: var(--text-lo, #50505e); margin-bottom: 6px;
-    }
-    .stat-card .s-val {
-      font-size: 22px; font-family: var(--display,'Bebas Neue',sans-serif);
-      letter-spacing: .06em; color: var(--text-hi, #f0f0f8);
-    }
-    .stat-card .s-unit {
-      font-size: 10px; color: var(--text-lo, #50505e); margin-left: 4px;
-    }
-  </style>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Ccircle cx=%228%22 cy=%228%22 r=%225%22 fill=%22%2322d3ee%22/%3E%3C/svg%3E">
+  <title>Mission Report {{ r.id }}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
 </head>
 <body>
-
-<!-- HEADER -->
-<header>
-  <div class="hdr-logo" style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:.12em;color:#f0f0f8;display:flex;align-items:center;gap:12px;">
-    SDATOS <span style="font-family:'Space Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.18px;color:#00e5ff;border:1px solid rgba(0,229,255,.28);padding:2px 8px;">Mission Report</span>
-  </div>
-  <span class="hdr-clock" id="hdr-clock">--:--:-- UTC</span>
+<header class="topbar">
+  <div class="brand"><span class="dot"></span> SDATOS <span class="muted">Mission report</span></div>
+  <nav><a href="/">Mission console</a><a href="/evidence">Evidence</a></nav>
 </header>
+{% macro conj(rows) %}
+  {% if rows %}
+  <table>
+    <tr><th>Object</th><th>Type</th><th>TCA (UTC)</th><th class="num">Miss km</th><th class="num">R / T / N km</th>
+        <th class="num">Rel. speed km/s</th><th class="num">σ km</th><th class="num">Pc</th><th>Risk</th></tr>
+    {% for c in rows %}
+    <tr><td>{{ c.name }} <span class="muted">#{{ c.object_id }}</span></td><td>{{ c.type }}</td><td class="mono">{{ c.tca_utc }}</td>
+        <td class="num">{{ '%.3f'|format(c.miss_km) }}</td>
+        <td class="num">{{ '%.2f'|format(c.radial_km) }} / {{ '%.2f'|format(c.along_km) }} / {{ '%.2f'|format(c.cross_km) }}</td>
+        <td class="num">{{ '%.2f'|format(c.rel_speed_kms) }}</td><td class="num">{{ '%.2f'|format(c.sigma_km) }}</td>
+        <td class="num">{{ '%.1e'|format(c.pc) }}</td><td><span class="pill {{ c.risk }}">{{ c.risk }}</span></td></tr>
+    {% endfor %}
+  </table>
+  {% else %}<p class="muted">No objects within 25 km.</p>{% endif %}
+{% endmacro %}
+<div class="doc">
+  <h1>Mission report</h1>
+  <p class="muted mono">{{ r.id }} · generated {{ r.generated_utc }} UTC</p>
+  <div class="verdict {{ 'go' if r.verdict == 'GO' else ('avoid' if r.verdict.startswith('GO') else 'nogo') }}">{{ r.verdict }}</div>
 
-<div class="report-wrap">
+  <h2>1. Mission</h2>
+  <div class="card"><table>
+    <tr><td>Launch vehicle</td><td>{{ r.mission.rocket }} (thrust {{ '{:,.0f}'.format(r.mission.thrust_n) }} N, burn {{ r.mission.burn_time_s }} s)</td></tr>
+    <tr><td>Launch site</td><td>{{ r.mission.launch_site }} ({{ r.mission.site_lat_lon[0] }}°, {{ r.mission.site_lat_lon[1] }}°)</td></tr>
+    <tr><td>Target orbit</td><td>{{ r.mission.target_alt_km }} km circular, inclination {{ r.mission.inclination_deg }}°, launch azimuth {{ r.mission.launch_azimuth_deg }}°</td></tr>
+    <tr><td>Nominal launch</td><td class="mono">{{ r.mission.nominal_launch_utc }} UTC (window ± {{ (r.mission.slip_allowed_s / 60)|round(1) }} min)</td></tr>
+    <tr><td>Screened span</td><td>ascent {{ r.mission.ascent_s }} s + coast, total {{ (r.mission.screened_duration_s / 60)|round(1) }} min</td></tr>
+    <tr><td>Synthetic threat events</td><td>{{ r.mission.synthetic_threat_events }}</td></tr>
+  </table></div>
 
-  <!-- Report header -->
-  <div class="report-header">
-    <div class="report-title-block">
-      <h1>Mission Report</h1>
-      <p>Space Debris Avoidance &amp; Trajectory Optimization System // v2.0.0</p>
-    </div>
-    <div class="report-badges">
-      <span class="tag tag-green" id="status-badge">COMPLETE</span>
-      <span class="tag tag-accent" id="gen-time" style="font-size:9px;">
-        {{ report_content[:22] if report_content else 'GENERATED NOW' }}
-      </span>
-    </div>
+  <h2>2. Data provenance</h2>
+  <div class="card"><table>
+    <tr><td>Source</td><td>{{ r.data.source }}</td></tr>
+    <tr><td>Catalog</td><td>{{ '{:,}'.format(r.data.catalog_objects) }} objects from {{ '{:,}'.format(r.data.elsets_in_history) }} element sets, {{ r.data.window_days }}-day window ending {{ r.data.reference_epoch[:16] }} UTC</td></tr>
+    <tr><td>Prediction uncertainty</td><td>{{ r.data.sigma_model }} (fitted by back-testing SGP4 on the window)</td></tr>
+  </table></div>
+
+  <h2>3. Screening</h2>
+  <div class="card">
+    <p class="funnel">catalog <b>{{ '{:,}'.format(r.screening.catalog_objects) }}</b> → altitude-band filter <b>{{ '{:,}'.format(r.screening.after_altitude_filter) }}</b>
+      → proximity prune <b>{{ '{:,}'.format(r.screening.after_proximity_prune) }}</b>{% if r.screening.synthetic_objects %} + <b>{{ r.screening.synthetic_objects }}</b> synthetic{% endif %}
+      · step {{ r.screening.dt_s }} s with analytic TCA refinement</p>
+    <p class="small muted">RED: Pc ≥ {{ r.screening.thresholds.pc_red }} or miss &lt; {{ r.screening.thresholds.miss_red_km }} km · AMBER: Pc ≥ {{ r.screening.thresholds.pc_amber }} or miss &lt; {{ r.screening.thresholds.miss_amber_km }} km</p>
   </div>
 
-  <!-- Extracted stat cards (populated by JS) -->
-  <div class="stats-grid" id="stats-grid" style="display:none;">
-    <div class="stat-card">
-      <div class="s-label">Collisions Detected</div>
-      <div class="s-val" id="stat-collisions">—<span class="s-unit"></span></div>
-    </div>
-    <div class="stat-card">
-      <div class="s-label">Target Altitude</div>
-      <div class="s-val" id="stat-altitude">—<span class="s-unit">km</span></div>
-    </div>
-    <div class="stat-card">
-      <div class="s-label">Mission Success Rate</div>
-      <div class="s-val" id="stat-rate">—<span class="s-unit">%</span></div>
-    </div>
-    <div class="stat-card">
-      <div class="s-label">Journey Time</div>
-      <div class="s-val" id="stat-time">—<span class="s-unit">s</span></div>
-    </div>
+  <h2>4. Nominal plan: {{ r.nominal.red }} RED, {{ r.nominal.amber }} AMBER</h2>
+  <div class="card">{{ conj(r.nominal.conjunctions) }}</div>
+
+  <h2>5. Avoidance decision</h2>
+  <div class="card">
+    <p>Policy: <b>{{ r.decision.policy }}</b>{% if r.decision.fallback_used %} (learned plan failed verification, greedy fallback used){% endif %} · {{ r.decision.screen_calls }} screenings</p>
+    {% if r.decision.trace %}
+    <table><tr><th>#</th><th>Action</th><th class="num">Slip s</th><th class="num">Δh km</th><th class="num">Δv m/s</th><th class="num">RED</th><th class="num">AMBER</th><th class="num">Min miss km</th></tr>
+      {% for x in r.decision.trace %}<tr><td>{{ x.step }}</td><td class="mono">{{ x.action }}</td><td class="num">{{ x.slip_s }}</td><td class="num">{{ x.dalt_km }}</td>
+        <td class="num">{{ x.dv_ms }}</td><td class="num">{{ x.red }}</td><td class="num">{{ x.amber }}</td><td class="num">{{ x.min_miss_km if x.min_miss_km is not none else '' }}</td></tr>{% endfor %}
+    </table>
+    {% else %}<p class="muted">Nominal plan clear. No maneuver required.</p>{% endif %}
+    <p>Final plan: launch <b class="mono">{{ r.decision.plan.launch_utc }}</b> UTC (slip {{ r.decision.plan.slip_s }} s), insertion offset {{ r.decision.plan.dalt_km }} km,
+       phasing burn {{ r.decision.plan.dv_ms }} m/s → <b>{{ r.decision.plan.dv_cost_ms }} m/s</b> extra Δv.</p>
   </div>
 
-  <!-- Raw report content -->
-  <div id="report-content">{{ report_content }}</div>
+  <h2>6. Planned trajectory: {{ r.final.red }} RED, {{ r.final.amber }} AMBER</h2>
+  <div class="card">{{ conj(r.final.conjunctions) }}
+    <p class="small muted">Aggregate collision probability over all screened objects: {{ '%.2e'|format(r.final.total_pc) }}</p></div>
 
-  <!-- Actions -->
-  <div class="report-actions">
-    <button onclick="window.history.back()">← Back to Mission Control</button>
-    <button class="btn-confirm" onclick="downloadReport()">⬇ Download Report</button>
-    <button class="btn-accent" onclick="window.location.href='/'">⬡ New Mission</button>
+  <h2>7. Performance</h2>
+  <div class="card mono small">{% for k, v in r.timings.items() %}{{ k }} = {{ v }}<br>{% endfor %}</div>
+
+  <h2>Assumptions &amp; limits</h2>
+  <div class="card small">
+    <ul>
+      <li>Debris states from SGP4 on public TLEs (no covariance published) → isotropic σ from our own back-test; real CA uses special-perturbation ephemerides and full covariance.</li>
+      <li>Ascent is a kinematic profile; the orbital phase is two-body after insertion (no drag/J2 over the ~2 h horizon).</li>
+      <li>Decision support only. A real launch COLA process runs with 18th SDS / operator data.</li>
+    </ul>
   </div>
-
 </div>
-
-<!-- Footer -->
-<footer>
-  <span>SDATOS // v2.0.0</span>
-  <span>©2025 Space Debris Avoidance &amp; Trajectory Optimization System</span>
-  <span><span class="dot"></span>REPORT READY</span>
-</footer>
-
-<script>
-  // Clock
-  function tick() {
-    const t = new Date();
-    const el = document.getElementById('hdr-clock');
-    if (el) el.textContent = [t.getUTCHours(),t.getUTCMinutes(),t.getUTCSeconds()]
-      .map(n=>String(n).padStart(2,'0')).join(':') + ' UTC';
-  }
-  tick(); setInterval(tick, 1000);
-
-  // Parse stat values from report content
-  const raw = document.getElementById('report-content').textContent;
-
-  function extract(pattern) {
-    const m = raw.match(pattern);
-    return m ? m[1] : '—';
-  }
-
-  const collisions = extract(/Collisions Detected[:\s]+(\d+)/);
-  const altitude   = extract(/Target Altitude[:\s]+([\d.]+)/);
-  const rate       = extract(/Mission Success Rate[:\s]+([\d.]+)/);
-  const journeyT   = extract(/Total Journey Time[:\s]+([\d.]+)/);
-
-  if (collisions !== '—' || altitude !== '—') {
-    document.getElementById('stats-grid').style.display = 'grid';
-    document.getElementById('stat-collisions').childNodes[0].textContent = collisions;
-    document.getElementById('stat-altitude').childNodes[0].textContent   = altitude;
-    document.getElementById('stat-rate').childNodes[0].textContent       = rate;
-    document.getElementById('stat-time').childNodes[0].textContent       = journeyT.split('.')[0];
-
-    // Color code collision count
-    const c = parseInt(collisions);
-    if (!isNaN(c)) {
-      const el = document.getElementById('stat-collisions');
-      el.style.color = c === 0 ? 'var(--green)' : c < 5 ? 'var(--amber)' : 'var(--red)';
-    }
-
-    // Color success rate badge
-    const r = parseFloat(rate);
-    if (!isNaN(r)) {
-      const badge = document.getElementById('status-badge');
-      if (r >= 90) { badge.textContent = 'SUCCESS'; badge.className = 'tag tag-green'; }
-      else if (r >= 50) { badge.textContent = 'PARTIAL'; badge.className = 'tag tag-amber'; }
-      else { badge.textContent = 'FAILED'; badge.className = 'tag tag-red'; }
-    }
-  }
-
-  // Syntax-highlight key report lines
-  const contentEl = document.getElementById('report-content');
-  if (contentEl) {
-    const lines = contentEl.textContent.split('\n');
-    const highlighted = lines.map(line => {
-      if (line.includes('===') || line.includes('Mission Success Rate')) return `<span style="color:var(--accent)">${line}</span>`;
-      if (line.includes('Status: Success') || line.includes('No collisions')) return `<span style="color:var(--green)">${line}</span>`;
-      if (line.includes('Collision') && !line.includes('0')) return `<span style="color:var(--red)">${line}</span>`;
-      if (line.includes('Optimized') || line.includes('Post-Optimization')) return `<span style="color:var(--amber)">${line}</span>`;
-      return line;
-    });
-    contentEl.innerHTML = highlighted.join('\n');
-  }
-
-  // Download
-  function downloadReport() {
-    const text = raw;
-    const blob = new Blob([text], {type:'text/plain'});
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'sdatos_mission_report_' + Date.now() + '.txt';
-    a.click();
-  }
-</script>
 </body>
 </html>

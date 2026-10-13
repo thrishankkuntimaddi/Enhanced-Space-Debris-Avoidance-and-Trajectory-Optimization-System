@@ -1,0 +1,364 @@
+{
+  "test_set": {
+    "scenarios": 200,
+    "backgrounds": 6,
+    "scenarios_with_red_at_nominal": 156,
+    "mean_red_at_nominal": 1.315,
+    "missions": [
+      {
+        "rocket": "Astra Rocket 3",
+        "alt_km": 449.8,
+        "inc_deg": 57.5,
+        "launch": "2025-03-13T01:00:00+00:00",
+        "objects_cached": 824
+      },
+      {
+        "rocket": "Zhuque-2",
+        "alt_km": 612.9,
+        "inc_deg": 41.0,
+        "launch": "2025-03-12T17:57:00+00:00",
+        "objects_cached": 1541
+      },
+      {
+        "rocket": "Antares",
+        "alt_km": 519.3,
+        "inc_deg": 37.9,
+        "launch": "2025-03-11T17:33:00+00:00",
+        "objects_cached": 1802
+      },
+      {
+        "rocket": "Firefly Alpha",
+        "alt_km": 542.1,
+        "inc_deg": 47.41,
+        "launch": "2025-03-12T06:01:00+00:00",
+        "objects_cached": 1635
+      },
+      {
+        "rocket": "Firefly Alpha",
+        "alt_km": 528.0,
+        "inc_deg": 34.8,
+        "launch": "2025-03-12T07:42:00+00:00",
+        "objects_cached": 1766
+      },
+      {
+        "rocket": "Antares",
+        "alt_km": 553.9,
+        "inc_deg": 45.33,
+        "launch": "2025-03-12T07:40:00+00:00",
+        "objects_cached": 1656
+      }
+    ]
+  },
+  "policies": {
+    "No avoidance": {
+      "n": 200,
+      "safe_rate": 0.22,
+      "safe_rate_ci95": [
+        0.1682,
+        0.2824
+      ],
+      "clean_rate": 0.115,
+      "mean_dv_ms": 0.0,
+      "mean_slip_min": 0.0,
+      "mean_cost": 5.95,
+      "mean_screen_calls": 1.0,
+      "mean_wall_ms": 16.1,
+      "fallback_rate": 0.0
+    },
+    "Random": {
+      "n": 200,
+      "safe_rate": 0.73,
+      "safe_rate_ci95": [
+        0.6646,
+        0.7868
+      ],
+      "clean_rate": 0.35,
+      "mean_dv_ms": 1.173,
+      "mean_slip_min": 0.505,
+      "mean_cost": 0.751,
+      "mean_screen_calls": 4.93,
+      "mean_wall_ms": 78.3,
+      "fallback_rate": 0.0
+    },
+    "Greedy lookahead": {
+      "n": 200,
+      "safe_rate": 1.0,
+      "safe_rate_ci95": [
+        0.9812,
+        1.0
+      ],
+      "clean_rate": 0.93,
+      "mean_dv_ms": 0.581,
+      "mean_slip_min": 0.605,
+      "mean_cost": -2.248,
+      "mean_screen_calls": 13.71,
+      "mean_wall_ms": 242.5,
+      "fallback_rate": 0.0
+    },
+    "DQN (vanilla)": {
+      "n": 200,
+      "safe_rate": 1.0,
+      "safe_rate_ci95": [
+        0.9812,
+        1.0
+      ],
+      "clean_rate": 0.795,
+      "mean_dv_ms": 0.915,
+      "mean_slip_min": 0.71,
+      "mean_cost": -2.071,
+      "mean_screen_calls": 3.59,
+      "mean_wall_ms": 83.7,
+      "fallback_rate": 0.0
+    },
+    "Double DQN": {
+      "n": 200,
+      "safe_rate": 0.995,
+      "safe_rate_ci95": [
+        0.9722,
+        0.9991
+      ],
+      "clean_rate": 0.82,
+      "mean_dv_ms": 0.747,
+      "mean_slip_min": 0.875,
+      "mean_cost": -2.06,
+      "mean_screen_calls": 4.25,
+      "mean_wall_ms": 85.2,
+      "fallback_rate": 0.0
+    },
+    "Double DQN + guard": {
+      "n": 200,
+      "safe_rate": 1.0,
+      "safe_rate_ci95": [
+        0.9812,
+        1.0
+      ],
+      "clean_rate": 0.82,
+      "mean_dv_ms": 0.742,
+      "mean_slip_min": 0.875,
+      "mean_cost": -2.094,
+      "mean_screen_calls": 5.33,
+      "mean_wall_ms": 81.6,
+      "fallback_rate": 0.005
+    },
+    "Grid search (subset)": {
+      "n": 80,
+      "safe_rate": 1.0,
+      "safe_rate_ci95": [
+        0.9542,
+        1.0
+      ],
+      "clean_rate": 1.0,
+      "mean_dv_ms": 0.573,
+      "mean_slip_min": 0.725,
+      "mean_cost": -2.284,
+      "mean_screen_calls": 293.77,
+      "mean_wall_ms": 4737.7,
+      "fallback_rate": 0.0,
+      "note": "evaluated on the first 80 scenarios (brute force is slow)"
+    },
+    "Greedy lookahead (same subset)": {
+      "n": 80,
+      "safe_rate": 1.0,
+      "safe_rate_ci95": [
+        0.9542,
+        1.0
+      ],
+      "clean_rate": 0.9375,
+      "mean_dv_ms": 0.536,
+      "mean_slip_min": 0.6,
+      "mean_cost": -2.261,
+      "mean_screen_calls": 13.57,
+      "mean_wall_ms": 211.6,
+      "fallback_rate": 0.0
+    },
+    "Double DQN + guard (same subset)": {
+      "n": 80,
+      "safe_rate": 1.0,
+      "safe_rate_ci95": [
+        0.9542,
+        1.0
+      ],
+      "clean_rate": 0.825,
+      "mean_dv_ms": 0.685,
+      "mean_slip_min": 0.95,
+      "mean_cost": -2.111,
+      "mean_screen_calls": 5.25,
+      "mean_wall_ms": 67.3,
+      "fallback_rate": 0.0
+    }
+  },
+  "ddqn_forward_pass_us": 12.9,
+  "real_catalog": {
+    "missions": 30,
+    "with_red": 0,
+    "with_amber": 11,
+    "min_miss_km": [
+      3.194,
+      5.458,
+      9.753,
+      4.288,
+      11.171,
+      25.847,
+      5.044,
+      9.806,
+      3.515,
+      8.484,
+      18.517,
+      28.548,
+      4.309,
+      7.697,
+      3.634,
+      9.67,
+      7.561,
+      4.177,
+      6.306,
+      6.003,
+      2.391,
+      1.918,
+      8.624,
+      4.879,
+      3.216,
+      6.288,
+      16.831,
+      5.751,
+      4.032,
+      8.367
+    ],
+    "closest": [
+      {
+        "rocket": "Firefly Alpha",
+        "alt_km": 504.2,
+        "launch": "2025-03-11T21:42:00+00:00",
+        "name": "HORUS 2",
+        "type": "PAYLOAD",
+        "miss_km": 3.194,
+        "pc": 7.3924105513355115e-09,
+        "risk": "AMBER",
+        "tca_utc": "2025-03-11 22:46:47",
+        "rel_speed_kms": 14.152
+      },
+      {
+        "rocket": "Vega",
+        "alt_km": 576.8,
+        "launch": "2025-03-11T02:40:00+00:00",
+        "name": "STARLINK-3055",
+        "type": "PAYLOAD",
+        "miss_km": 4.288,
+        "pc": 3.2421008223423436e-21,
+        "risk": "AMBER",
+        "tca_utc": "2025-03-11 03:20:53",
+        "rel_speed_kms": 8.207
+      },
+      {
+        "rocket": "Zhuque-2",
+        "alt_km": 521.6,
+        "launch": "2025-03-11T03:58:00+00:00",
+        "name": "OBJECT M",
+        "type": "UNKNOWN",
+        "miss_km": 3.515,
+        "pc": 6.793648373202031e-11,
+        "risk": "AMBER",
+        "tca_utc": "2025-03-11 05:41:28",
+        "rel_speed_kms": 11.022
+      },
+      {
+        "rocket": "Falcon 1",
+        "alt_km": 542.0,
+        "launch": "2025-03-12T14:09:00+00:00",
+        "name": "STARLINK-4285",
+        "type": "PAYLOAD",
+        "miss_km": 4.309,
+        "pc": 3.525754982936369e-08,
+        "risk": "AMBER",
+        "tca_utc": "2025-03-12 15:32:25",
+        "rel_speed_kms": 9.524
+      },
+      {
+        "rocket": "Vega",
+        "alt_km": 533.7,
+        "launch": "2025-03-12T06:54:00+00:00",
+        "name": "STARLINK-5430",
+        "type": "PAYLOAD",
+        "miss_km": 3.634,
+        "pc": 4.533117750641463e-08,
+        "risk": "AMBER",
+        "tca_utc": "2025-03-12 08:59:27",
+        "rel_speed_kms": 1.413
+      },
+      {
+        "rocket": "Tianlong-2",
+        "alt_km": 560.1,
+        "launch": "2025-03-12T11:59:00+00:00",
+        "name": "STARLINK-30213",
+        "type": "PAYLOAD",
+        "miss_km": 4.177,
+        "pc": 2.329712587124293e-07,
+        "risk": "AMBER",
+        "tca_utc": "2025-03-12 12:28:42",
+        "rel_speed_kms": 10.147
+      },
+      {
+        "rocket": "Nuri",
+        "alt_km": 538.4,
+        "launch": "2025-03-12T05:20:00+00:00",
+        "name": "STARLINK-1560",
+        "type": "PAYLOAD",
+        "miss_km": 2.391,
+        "pc": 5.799525447985406e-06,
+        "risk": "AMBER",
+        "tca_utc": "2025-03-12 07:14:03",
+        "rel_speed_kms": 2.479
+      },
+      {
+        "rocket": "Zhuque-2",
+        "alt_km": 554.3,
+        "launch": "2025-03-12T09:30:00+00:00",
+        "name": "STARLINK-30477",
+        "type": "PAYLOAD",
+        "miss_km": 1.918,
+        "pc": 9.697259410674994e-06,
+        "risk": "AMBER",
+        "tca_utc": "2025-03-12 09:58:50",
+        "rel_speed_kms": 9.051
+      },
+      {
+        "rocket": "Astra Rocket 3",
+        "alt_km": 492.7,
+        "launch": "2025-03-12T04:04:00+00:00",
+        "name": "YAOGAN-39 02A",
+        "type": "PAYLOAD",
+        "miss_km": 4.879,
+        "pc": 3.024267577156238e-11,
+        "risk": "AMBER",
+        "tca_utc": "2025-03-12 05:27:00",
+        "rel_speed_kms": 11.849
+      },
+      {
+        "rocket": "Long March 4C",
+        "alt_km": 540.9,
+        "launch": "2025-03-12T10:45:00+00:00",
+        "name": "STARLINK-2639",
+        "type": "PAYLOAD",
+        "miss_km": 3.216,
+        "pc": 4.254105160088921e-07,
+        "risk": "AMBER",
+        "tca_utc": "2025-03-12 12:28:57",
+        "rel_speed_kms": 8.669
+      },
+      {
+        "rocket": "Nuri",
+        "alt_km": 523.5,
+        "launch": "2025-03-12T00:58:00+00:00",
+        "name": "DMSP 5D-2 F14 DEB",
+        "type": "DEBRIS",
+        "miss_km": 4.032,
+        "pc": 6.388992368572396e-08,
+        "risk": "AMBER",
+        "tca_utc": "2025-03-12 01:48:53",
+        "rel_speed_kms": 14.459
+      }
+    ],
+    "median_min_miss_km": 6.1455
+  },
+  "minutes": 11.2
+}

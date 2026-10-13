@@ -1,19 +1,9 @@
-numpy>=1.23.0
-pandas>=1.5.0
-matplotlib>=3.6.0
-plotly>=5.0.0
-scipy>=1.9.0
-
-sgp4~=2.24
-
-flask>=3.0.0
-flask-cors>=4.0.0
-gunicorn>=21.0.0
-
-# TensorFlow — for local macOS (Apple Silicon) development only.
-# Render uses Linux; install tensorflow instead of tensorflow-macos there.
-# tensorflow-macos==2.15.0
-# tensorflow-metal==1.1.0
-
-# Uncomment the line below if deploying to Render/Linux:
-# tensorflow==2.15.0
+# Serving / pipeline (no deep-learning framework needed at inference: the policy runs in numpy)
+numpy>=2.0
+pandas>=2.2
+scipy>=1.13
+sgp4>=2.24
+requests>=2.32
+flask>=3.0
+gunicorn>=22.0
+matplotlib>=3.8

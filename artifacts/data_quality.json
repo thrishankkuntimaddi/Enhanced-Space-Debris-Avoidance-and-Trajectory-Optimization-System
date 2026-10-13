@@ -1,0 +1,40 @@
+{
+  "sources": [
+    "inputs/tle_raw.txt"
+  ],
+  "raw_lines": 119114,
+  "window_days": 7,
+  "reference_epoch": "2025-03-13T01:58:40.950624+00:00",
+  "window_start": "2025-03-06T01:58:40.950624+00:00",
+  "earliest_epoch_in_window": "2025-03-06T04:29:30.121152+00:00",
+  "dropped_exact_duplicates": 2277,
+  "dropped_outside_window": 14,
+  "dropped_same_epoch_duplicates": 6406,
+  "elsets_seen": 59557,
+  "parsed_ok": 59557,
+  "elsets_in_history": 50860,
+  "unique_objects": 23805,
+  "mean_elsets_per_object": 2.14,
+  "objects_with_history(>=2 elsets)": 17160,
+  "regimes": {
+    "LEO": 20484,
+    "GEO": 1471,
+    "HEO": 1178,
+    "MEO": 672
+  },
+  "object_types": {
+    "PAYLOAD": 13346,
+    "DEBRIS": 8323,
+    "ROCKET BODY": 1865,
+    "UNKNOWN": 271
+  },
+  "stale_objects": 2488,
+  "decaying_objects(perigee<200km)": 51,
+  "elset_discontinuities": 503,
+  "maneuvering_payloads": 415,
+  "epoch_age_days": {
+    "median": 2.568,
+    "p95": 3.186,
+    "max": 6.895
+  }
+}

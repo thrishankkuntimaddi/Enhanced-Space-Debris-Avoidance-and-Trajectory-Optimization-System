@@ -2,10 +2,10 @@ services:
   - type: web
     name: sdatos-backend
     runtime: python
-    buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn --chdir . "src.interface.app:app" --bind 0.0.0.0:$PORT --workers 2 --timeout 120
+    buildCommand: pip install -r requirements.txt && python -m src.cli build
+    startCommand: gunicorn "src.interface.app:app" --bind 0.0.0.0:$PORT --workers 1 --threads 4 --timeout 120
     envVars:
       - key: PYTHON_VERSION
-        value: 3.11.0
+        value: 3.12.4
     autoDeploy: true
     plan: free

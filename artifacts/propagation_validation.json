@@ -1,0 +1,230 @@
+{
+  "method": "propagate older elset to newer elset epoch with SGP4, compare positions",
+  "excluded_objects_with_discontinuities": 503,
+  "pairs": 25840,
+  "by_regime": {
+    "ALL": [
+      {
+        "horizon_h": "0-6",
+        "n": 4955,
+        "median_km": 0.12,
+        "p90_km": 3.581,
+        "p95_km": 7.26,
+        "median_abs_radial_km": 0.012,
+        "median_abs_along_km": 0.102,
+        "median_abs_cross_km": 0.014
+      },
+      {
+        "horizon_h": "6-12",
+        "n": 11172,
+        "median_km": 0.189,
+        "p90_km": 4.788,
+        "p95_km": 9.181,
+        "median_abs_radial_km": 0.026,
+        "median_abs_along_km": 0.177,
+        "median_abs_cross_km": 0.018
+      },
+      {
+        "horizon_h": "12-24",
+        "n": 9416,
+        "median_km": 0.554,
+        "p90_km": 13.308,
+        "p95_km": 19.518,
+        "median_abs_radial_km": 0.048,
+        "median_abs_along_km": 0.518,
+        "median_abs_cross_km": 0.038
+      },
+      {
+        "horizon_h": "24-48",
+        "n": 292,
+        "median_km": 0.766,
+        "p90_km": 8.839,
+        "p95_km": 17.288,
+        "median_abs_radial_km": 0.073,
+        "median_abs_along_km": 0.72,
+        "median_abs_cross_km": 0.05
+      }
+    ],
+    "GEO": [
+      {
+        "horizon_h": "0-6",
+        "n": 236,
+        "median_km": 0.261,
+        "p90_km": 2.661,
+        "p95_km": 8.496,
+        "median_abs_radial_km": 0.038,
+        "median_abs_along_km": 0.175,
+        "median_abs_cross_km": 0.039
+      },
+      {
+        "horizon_h": "6-12",
+        "n": 387,
+        "median_km": 0.394,
+        "p90_km": 3.083,
+        "p95_km": 10.545,
+        "median_abs_radial_km": 0.084,
+        "median_abs_along_km": 0.326,
+        "median_abs_cross_km": 0.037
+      },
+      {
+        "horizon_h": "12-24",
+        "n": 539,
+        "median_km": 0.52,
+        "p90_km": 5.023,
+        "p95_km": 9.46,
+        "median_abs_radial_km": 0.126,
+        "median_abs_along_km": 0.342,
+        "median_abs_cross_km": 0.052
+      },
+      {
+        "horizon_h": "24-48",
+        "n": 39,
+        "median_km": 0.476,
+        "p90_km": 1.856,
+        "p95_km": 4.958,
+        "median_abs_radial_km": 0.045,
+        "median_abs_along_km": 0.391,
+        "median_abs_cross_km": 0.028
+      }
+    ],
+    "HEO": [
+      {
+        "horizon_h": "0-6",
+        "n": 41,
+        "median_km": 0.244,
+        "p90_km": 0.935,
+        "p95_km": 2.682,
+        "median_abs_radial_km": 0.044,
+        "median_abs_along_km": 0.177,
+        "median_abs_cross_km": 0.022
+      },
+      {
+        "horizon_h": "6-12",
+        "n": 210,
+        "median_km": 0.47,
+        "p90_km": 1.341,
+        "p95_km": 1.901,
+        "median_abs_radial_km": 0.091,
+        "median_abs_along_km": 0.365,
+        "median_abs_cross_km": 0.061
+      },
+      {
+        "horizon_h": "12-24",
+        "n": 214,
+        "median_km": 0.511,
+        "p90_km": 2.371,
+        "p95_km": 3.092,
+        "median_abs_radial_km": 0.098,
+        "median_abs_along_km": 0.419,
+        "median_abs_cross_km": 0.056
+      },
+      {
+        "horizon_h": "24-48",
+        "n": 28,
+        "median_km": 0.862,
+        "p90_km": 5.297,
+        "p95_km": 8.009,
+        "median_abs_radial_km": 0.216,
+        "median_abs_along_km": 0.742,
+        "median_abs_cross_km": 0.112
+      }
+    ],
+    "LEO": [
+      {
+        "horizon_h": "0-6",
+        "n": 4617,
+        "median_km": 0.108,
+        "p90_km": 3.71,
+        "p95_km": 7.356,
+        "median_abs_radial_km": 0.011,
+        "median_abs_along_km": 0.097,
+        "median_abs_cross_km": 0.013
+      },
+      {
+        "horizon_h": "6-12",
+        "n": 10478,
+        "median_km": 0.178,
+        "p90_km": 4.951,
+        "p95_km": 9.397,
+        "median_abs_radial_km": 0.025,
+        "median_abs_along_km": 0.17,
+        "median_abs_cross_km": 0.017
+      },
+      {
+        "horizon_h": "12-24",
+        "n": 8489,
+        "median_km": 0.59,
+        "p90_km": 13.922,
+        "p95_km": 20.086,
+        "median_abs_radial_km": 0.045,
+        "median_abs_along_km": 0.579,
+        "median_abs_cross_km": 0.037
+      },
+      {
+        "horizon_h": "24-48",
+        "n": 210,
+        "median_km": 0.87,
+        "p90_km": 11.412,
+        "p95_km": 20.253,
+        "median_abs_radial_km": 0.073,
+        "median_abs_along_km": 0.865,
+        "median_abs_cross_km": 0.053
+      }
+    ],
+    "MEO": [
+      {
+        "horizon_h": "0-6",
+        "n": 61,
+        "median_km": 0.036,
+        "p90_km": 0.635,
+        "p95_km": 1.09,
+        "median_abs_radial_km": 0.007,
+        "median_abs_along_km": 0.032,
+        "median_abs_cross_km": 0.01
+      },
+      {
+        "horizon_h": "6-12",
+        "n": 97,
+        "median_km": 0.076,
+        "p90_km": 1.059,
+        "p95_km": 2.007,
+        "median_abs_radial_km": 0.015,
+        "median_abs_along_km": 0.065,
+        "median_abs_cross_km": 0.023
+      },
+      {
+        "horizon_h": "12-24",
+        "n": 174,
+        "median_km": 0.13,
+        "p90_km": 1.151,
+        "p95_km": 2.537,
+        "median_abs_radial_km": 0.025,
+        "median_abs_along_km": 0.11,
+        "median_abs_cross_km": 0.037
+      }
+    ]
+  },
+  "sigma_model": {
+    "regime": "LEO",
+    "sigma0_km": 0.05,
+    "k_km_per_day": 0.6074,
+    "points": [
+      {
+        "dt_days": 0.083,
+        "sigma_axis_km": 0.0833
+      },
+      {
+        "dt_days": 0.333,
+        "sigma_axis_km": 0.1432
+      },
+      {
+        "dt_days": 0.662,
+        "sigma_axis_km": 0.4012
+      },
+      {
+        "dt_days": 1.064,
+        "sigma_axis_km": 0.6516
+      }
+    ]
+  }
+}

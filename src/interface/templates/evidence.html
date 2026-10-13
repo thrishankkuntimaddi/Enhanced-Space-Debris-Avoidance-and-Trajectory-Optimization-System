@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Ccircle cx=%228%22 cy=%228%22 r=%225%22 fill=%22%2322d3ee%22/%3E%3C/svg%3E">
+  <title>SDATOS Evidence</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand"><span class="dot"></span> SDATOS <span class="muted">Evidence</span></div>
+  <nav><a href="/">Mission console</a><a href="/evidence" class="active">Evidence</a></nav>
+</header>
+<div class="doc">
+  <h1>Evidence</h1>
+  <p class="muted">Every number on this page is produced by scripts in this repo (<span class="mono">python -m src.cli all</span>) and committed under <span class="mono">artifacts/</span>.</p>
+
+  {% if quality %}
+  <h2>1. Data pipeline: 7-day TLE window → super dataset</h2>
+  <div class="card"><table>
+    <tr><td>Raw lines / element sets parsed</td><td class="num">{{ '{:,}'.format(quality.raw_lines) }} / {{ '{:,}'.format(quality.parsed_ok) }}</td></tr>
+    <tr><td>Exact duplicates · same-epoch re-publications · outside window</td><td class="num">{{ '{:,}'.format(quality.dropped_exact_duplicates) }} · {{ '{:,}'.format(quality.dropped_same_epoch_duplicates) }} · {{ quality.dropped_outside_window }}</td></tr>
+    <tr><td>Element sets in history</td><td class="num">{{ '{:,}'.format(quality.elsets_in_history) }}</td></tr>
+    <tr><td>Unique objects (super dataset)</td><td class="num">{{ '{:,}'.format(quality.unique_objects) }}</td></tr>
+    <tr><td>Objects with ≥2 elsets (usable for back-test)</td><td class="num">{{ '{:,}'.format(quality['objects_with_history(>=2 elsets)']) }}</td></tr>
+    <tr><td>Regimes</td><td class="num">{% for k, v in quality.regimes.items() %}{{ k }} {{ '{:,}'.format(v) }} {% endfor %}</td></tr>
+    <tr><td>Object types (SATCAT join)</td><td class="num">{% for k, v in quality.object_types.items() %}{{ k }} {{ '{:,}'.format(v) }} · {% endfor %}</td></tr>
+    <tr><td>Elset discontinuities / maneuvering payloads</td><td class="num">{{ quality.elset_discontinuities }} / {{ quality.maneuvering_payloads }}</td></tr>
+    <tr><td>Stale (&gt;3 d) · decaying (perigee &lt;200 km)</td><td class="num">{{ quality.stale_objects }} · {{ quality['decaying_objects(perigee<200km)'] }}</td></tr>
+  </table></div>
+  {% endif %}
+
+  {% if validation %}
+  <h2>2. How accurate are the predictions? SGP4 back-test</h2>
+  <div class="card">
+    <p class="small">{{ '{:,}'.format(validation.pairs) }} prediction pairs: older elset propagated to the newer elset's epoch ({{ validation.excluded_objects_with_discontinuities }} objects with discontinuities excluded).</p>
+    <img src="/artifacts/fig_prediction_error.png" alt="Prediction error vs horizon">
+    <table><tr><th>LEO horizon</th><th class="num">n</th><th class="num">median km</th><th class="num">p90 km</th><th class="num">p95 km</th><th class="num">|radial|</th><th class="num">|along|</th><th class="num">|cross|</th></tr>
+      {% for b in validation.by_regime.LEO %}<tr><td>{{ b.horizon_h }} h</td><td class="num">{{ '{:,}'.format(b.n) }}</td><td class="num">{{ b.median_km }}</td><td class="num">{{ b.p90_km }}</td><td class="num">{{ b.p95_km }}</td>
+        <td class="num">{{ b.median_abs_radial_km }}</td><td class="num">{{ b.median_abs_along_km }}</td><td class="num">{{ b.median_abs_cross_km }}</td></tr>{% endfor %}
+    </table>
+    <p class="small">Fitted per-axis uncertainty (used as debris covariance for Pc): σ = {{ validation.sigma_model.sigma0_km }} km + {{ validation.sigma_model.k_km_per_day }} km/day × elset age.</p>
+  </div>
+  {% endif %}
+
+  <h2>3. Learning: Double DQN vs vanilla DQN</h2>
+  <div class="card"><img src="/artifacts/fig_training.png" alt="Training curves"></div>
+
+  {% if evaluation %}
+  <h2>4. Held-out evaluation ({{ evaluation.test_set.scenarios }} scenarios, {{ evaluation.test_set.backgrounds }} unseen missions)</h2>
+  <div class="card">
+    <p class="small">{{ evaluation.test_set.scenarios_with_red_at_nominal }} of {{ evaluation.test_set.scenarios }} scenarios have at least one RED conjunction if nothing is done.</p>
+    <table><tr><th>Policy</th><th class="num">Safe (no RED)</th><th class="num">95% CI</th><th class="num">Clean</th><th class="num">Δv m/s</th><th class="num">Slip min</th><th class="num">Cost</th><th class="num">Screenings</th><th class="num">ms / plan</th></tr>
+      {% for name, p in evaluation.policies.items() %}<tr><td>{{ name }}</td><td class="num">{{ '%.1f'|format(100 * p.safe_rate) }}%</td>
+        <td class="num">{{ '%.1f'|format(100 * p.safe_rate_ci95[0]) }}–{{ '%.1f'|format(100 * p.safe_rate_ci95[1]) }}</td>
+        <td class="num">{{ '%.1f'|format(100 * p.clean_rate) }}%</td><td class="num">{{ p.mean_dv_ms }}</td><td class="num">{{ p.mean_slip_min }}</td>
+        <td class="num">{{ p.mean_cost }}</td><td class="num">{{ p.mean_screen_calls }}</td><td class="num">{{ p.mean_wall_ms }}</td></tr>{% endfor %}
+    </table>
+    <p class="small muted">Cost = the agent's objective (risk + Δv + schedule), lower is better. DDQN forward pass: {{ evaluation.ddqn_forward_pass_us }} µs.</p>
+  </div>
+  <h2>5. Real catalog, no injected threats</h2>
+  <div class="card">
+    <p>{{ evaluation.real_catalog.missions }} random launches against the real catalog: <b>{{ evaluation.real_catalog.with_red }}</b> with a RED conjunction, <b>{{ evaluation.real_catalog.with_amber }}</b> with an AMBER one; median closest approach {{ '%.1f'|format(evaluation.real_catalog.median_min_miss_km) }} km.</p>
+    {% if evaluation.real_catalog.closest %}
+    <table><tr><th>Mission</th><th>Object</th><th class="num">Miss km</th><th class="num">Pc</th><th>Risk</th></tr>
+      {% for c in evaluation.real_catalog.closest %}<tr><td>{{ c.rocket }} {{ c.alt_km }} km · {{ c.launch[:16] }}</td><td>{{ c.name }} ({{ c.type }})</td>
+        <td class="num">{{ c.miss_km }}</td><td class="num">{{ '%.1e'|format(c.pc) }}</td><td><span class="pill {{ c.risk }}">{{ c.risk }}</span></td></tr>{% endfor %}
+    </table>{% endif %}
+  </div>
+  {% endif %}
+</div>
+</body>
+</html>
