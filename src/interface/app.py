@@ -41,6 +41,15 @@ Compress(app)
 SAFE_ID = re.compile(r"^[A-Za-z0-9_\-]+$")
 WARM = {"done": 0, "total": len(PRESETS)}
 STARTED = time.time()
+_IMPORT_LOCK = threading.Lock()
+
+
+def planner():
+    """Import the heavy planner (pandas, scipy) once, thread-safely. On a slow CPU the import takes
+    tens of seconds; without the lock a second thread can see a half-initialised module."""
+    with _IMPORT_LOCK:
+        import src.pipeline.planner as P
+        return P
 _THREAD_LOCK = threading.Lock()
 LOCK_FILE = S.OUTPUTS_DIR / ".plan.lock"
 
@@ -78,7 +87,7 @@ def _warm_presets():
         WARM["owner"] = "another worker"
         return
     try:
-        from src.pipeline.planner import run_preset, release_memory
+        P = planner()
     except Exception as e:
         WARM["error"] = f"{type(e).__name__}: {e}"
         app.logger.exception("planner import failed")
@@ -86,8 +95,8 @@ def _warm_presets():
     for p in PRESETS:
         try:
             with plan_lock():
-                run_preset(p)
-                release_memory()
+                P.run_preset(p)
+                P.release_memory()
         except Exception as e:  # warming is best-effort; a failure only means a slower first click
             WARM["error"] = f"{type(e).__name__}: {e}"
             app.logger.exception("preset warm-up failed for %s", p["label"])
@@ -168,10 +177,10 @@ def api_plan():
         lo, hi = catalog_window()
         if not lo <= launch <= hi:
             raise ValueError(f"Launch time must be inside the TLE validity window {lo:%Y-%m-%d %H:%M} .. {hi:%Y-%m-%d %H:%M} UTC")
-        from src.pipeline.planner import plan_mission_cached, release_memory
+        P = planner()
         with plan_lock():
-            rep = plan_mission_cached(d["rocket"], alt, launch, inc, threats, slip, int(d.get("seed", 0)))
-            release_memory()
+            rep = P.plan_mission_cached(d["rocket"], alt, launch, inc, threats, slip, int(d.get("seed", 0)))
+            P.release_memory()
     except (KeyError, ValueError) as e:
         return jsonify({"error": str(e)}), 400
     except Exception as e:
