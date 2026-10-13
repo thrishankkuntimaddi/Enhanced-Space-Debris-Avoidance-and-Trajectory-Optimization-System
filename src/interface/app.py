@@ -19,8 +19,10 @@ from __future__ import annotations
 import fcntl
 import json
 import os
+import platform
 import re
 import threading
+import time
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 
@@ -38,6 +40,7 @@ Compress(app)
 
 SAFE_ID = re.compile(r"^[A-Za-z0-9_\-]+$")
 WARM = {"done": 0, "total": len(PRESETS)}
+STARTED = time.time()
 _THREAD_LOCK = threading.Lock()
 LOCK_FILE = S.OUTPUTS_DIR / ".plan.lock"
 
@@ -74,14 +77,20 @@ def _warm_presets():
     except BlockingIOError:
         WARM["owner"] = "another worker"
         return
-    from src.pipeline.planner import run_preset, release_memory
+    try:
+        from src.pipeline.planner import run_preset, release_memory
+    except Exception as e:
+        WARM["error"] = f"{type(e).__name__}: {e}"
+        app.logger.exception("planner import failed")
+        return
     for p in PRESETS:
         try:
             with plan_lock():
                 run_preset(p)
                 release_memory()
         except Exception as e:  # warming is best-effort; a failure only means a slower first click
-            app.logger.warning("preset warm-up failed for %s: %s", p["label"], e)
+            WARM["error"] = f"{type(e).__name__}: {e}"
+            app.logger.exception("preset warm-up failed for %s", p["label"])
         WARM["done"] += 1
 
 
@@ -108,7 +117,8 @@ def console():
 
 @app.get("/healthz")
 def healthz():
-    return jsonify({"ok": True, "presets_warm": WARM})
+    return jsonify({"ok": True, "presets_warm": WARM, "pid": os.getpid(),
+                    "uptime_s": round(time.time() - STARTED), "python": platform.python_version()})
 
 
 @app.get("/evidence")
@@ -164,6 +174,9 @@ def api_plan():
             release_memory()
     except (KeyError, ValueError) as e:
         return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        app.logger.exception("plan failed")
+        return jsonify({"error": f"Internal error ({type(e).__name__}): {e}"}), 500
     return jsonify(rep)
 
 
