@@ -196,19 +196,23 @@ def screen(ctx: ScreeningContext, plan: ManeuverPlan, min_alt_km: float = 80.0) 
     best_seg = np.clip(j, 0, M - 2)
     best_vec = d[rows, j].astype(float)
     near = np.flatnonzero(best_m < 0.5 * MAX_REL_SPEED_KMS * spec.dt_s)
-    if len(near):
-        a = d[near, :-1].astype(float)                           # (n, M-1, 3)
-        ab = d[near, 1:].astype(float) - a
+    act_seg = (active[:-1] & active[1:])[None]
+    for c0 in range(0, len(near), 256):                    # chunked + float32: bounded memory
+        idx_c = near[c0:c0 + 256]
+        a = d[idx_c, :-1]                                   # (n, M-1, 3) float32
+        ab = d[idx_c, 1:] - a
         sv = np.clip(-(a * ab).sum(2) / np.maximum((ab * ab).sum(2), 1e-12), 0, 1)
-        vec = a + sv[..., None] * ab
-        m = np.linalg.norm(vec, axis=2)
-        m = np.where(np.isfinite(m) & active[:-1][None] & active[1:][None], m, np.inf)
+        m = np.linalg.norm(a + sv[..., None] * ab, axis=2)
+        m = np.where(np.isfinite(m) & act_seg, m, np.inf)
         k = np.argmin(m, axis=1)
-        r_ = np.arange(len(near))
-        better = m[r_, k] < best_m[near]
-        idx = near[better]
-        best_m[idx], best_s[idx], best_seg[idx] = m[r_, k][better], sv[r_, k][better], k[better]
-        best_vec[idx] = vec[r_, k][better]
+        r_ = np.arange(len(idx_c))
+        mk = m[r_, k].astype(float)
+        better = mk < best_m[idx_c]
+        idx = idx_c[better]
+        kb, sb = k[better], sv[r_, k][better].astype(float)
+        best_m[idx], best_s[idx], best_seg[idx] = mk[better], sb, kb
+        a_b, b_b = d[idx, kb].astype(float), d[idx, kb + 1].astype(float)
+        best_vec[idx] = a_b + sb[:, None] * (b_b - a_b)
     seg = np.clip(best_seg, 0, M - 2)
     rel_v = (d[rows, seg + 1] - d[rows, seg]).astype(float) / spec.dt_s
     tca = tau[seg] + best_s * spec.dt_s
