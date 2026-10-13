@@ -3,9 +3,14 @@ services:
     name: sdatos-backend
     runtime: python
     buildCommand: pip install -r requirements.txt && python -m src.cli build
-    startCommand: gunicorn "src.interface.app:app" --bind 0.0.0.0:$PORT --workers 1 --threads 4 --timeout 120
+    startCommand: gunicorn "src.interface.app:app"
+    healthCheckPath: /healthz
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.4
+      - key: WEB_CONCURRENCY
+        value: "1"
+      - key: MALLOC_ARENA_MAX
+        value: "2"
     autoDeploy: true
     plan: free
