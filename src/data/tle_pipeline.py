@@ -23,6 +23,7 @@ import numpy as np
 import pandas as pd
 
 from src.config import settings as S
+from src.data.active import active_dataset, active_quality  # noqa: F401  (re-exported)
 
 
 @dataclass
@@ -270,7 +271,10 @@ def enrich_with_satcat(cat: pd.DataFrame, satcat_path: Path | None = None) -> pd
 
 
 def run_pipeline(sources: list[Path], window_days: float = S.WINDOW_DAYS,
-                 reference: datetime | None = None, save: bool = True) -> PipelineResult:
+                 reference: datetime | None = None, save: bool = True,
+                 out_dir: Path | None = None, extra_quality: dict | None = None) -> PipelineResult:
+    """out_dir=None writes the seed dataset (data/ + artifacts/data_quality.json);
+    an out_dir (e.g. data/live) gets catalog.csv, tle_data.txt and quality.json instead."""
     stats: Counter = Counter()
     records: list[TLERecord] = []
     raw_lines = 0
@@ -310,14 +314,23 @@ def run_pipeline(sources: list[Path], window_days: float = S.WINDOW_DAYS,
         },
     }
 
+    quality.update(extra_quality or {})
     if save:
-        catalog.to_csv(S.CATALOG_CSV, index=False)
-        history.drop(columns=["line1", "line2"]).to_csv(S.HISTORY_CSV, index=False)
-        with open(S.CATALOG_TLE, "w") as f:
-            for r in catalog.itertuples():
-                f.write(f"0 {r.name}\n{r.line1}\n{r.line2}\n")
-        with open(S.ARTIFACTS_DIR / "data_quality.json", "w") as f:
-            json.dump(quality, f, indent=2, default=str)
+        if out_dir is None:
+            cat_csv, tle_txt, q_json = S.CATALOG_CSV, S.CATALOG_TLE, S.ARTIFACTS_DIR / "data_quality.json"
+            history.drop(columns=["line1", "line2"]).to_csv(S.HISTORY_CSV, index=False)
+        else:
+            out_dir.mkdir(parents=True, exist_ok=True)
+            cat_csv, tle_txt, q_json = out_dir / "catalog.csv", out_dir / "tle_data.txt", out_dir / "quality.json"
+        # write-then-rename so a reader never sees a half-written catalog
+        for path, writer in ((cat_csv, lambda f: catalog.to_csv(f, index=False)),
+                             (tle_txt, lambda f: f.writelines(f"0 {r.name}\n{r.line1}\n{r.line2}\n"
+                                                              for r in catalog.itertuples())),
+                             (q_json, lambda f: json.dump(quality, f, indent=2, default=str))):
+            tmp = path.with_suffix(path.suffix + ".tmp")
+            with open(tmp, "w", newline="") as f:
+                writer(f)
+            tmp.replace(path)
     return PipelineResult(history=history, catalog=catalog, quality=quality)
 
 
@@ -328,10 +341,8 @@ def default_sources() -> list[Path]:
 
 
 def load_catalog() -> pd.DataFrame:
-    """Load the super dataset, building it on first use."""
-    if not S.CATALOG_CSV.exists():
-        run_pipeline(default_sources())
-    cat = pd.read_csv(S.CATALOG_CSV, keep_default_na=False,
+    """Load the active super dataset (live if fresh, else the seed snapshot, built on first use)."""
+    cat = pd.read_csv(active_dataset()["catalog"], keep_default_na=False,
                       na_values={c: [""] for c in ("sma_rate_km_day", "rcs_m2", "history_span_days")})
     cat["epoch"] = pd.to_datetime(cat["epoch"], utc=True, format="ISO8601")
     cat["name"] = cat["name"].astype(str)

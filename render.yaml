@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: sdatos-backend
+    name: sentinelflight
     runtime: python
     buildCommand: pip install -r requirements.txt && python -m src.cli build
     startCommand: gunicorn "src.interface.app:app"
@@ -12,5 +12,13 @@ services:
         value: "1"
       - key: MALLOC_ARENA_MAX
         value: "2"
+      - key: SENTINEL_LIVE            # refresh the catalog in the background (every SENTINEL_REFRESH_H hours)
+        value: "1"
+      - key: SENTINEL_REFRESH_H
+        value: "6"
+      - key: SPACETRACK_USERNAME      # optional: full catalog. Without it, CelesTrak's partial public groups
+        sync: false
+      - key: SPACETRACK_PASSWORD
+        sync: false
     autoDeploy: true
     plan: free
