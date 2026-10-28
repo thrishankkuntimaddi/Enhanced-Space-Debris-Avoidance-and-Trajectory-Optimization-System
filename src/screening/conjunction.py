@@ -7,8 +7,11 @@ Coarse-to-fine design (each stage is cheap and removes most of the work for the 
                               vehicle's band (Hoots-style filter, no propagation needed).
   2. Vectorized SGP4        - propagate survivors in chunks on a 10 s grid that covers every
                               launch slip the optimizer may choose (SatrecArray, C speed).
-  3. Proximity prune        - keep only objects that come within `keep_km` of ANY candidate
-                              plan (all slips) -> a few hundred objects, cached in memory.
+  3. Proximity prune        - keep only objects that come within `keep_km` of the nominal
+                              path for ANY slip. keep_km defaults to the maneuver envelope
+                              (how far the largest allowed altitude change + phasing burn
+                              can move the vehicle from nominal) plus the reporting radius,
+                              so no object an allowed plan could meet is dropped.
   4. TCA refinement         - between ephemeris samples relative motion is ~linear, so the
                               time & distance of closest approach are solved in closed form.
   5. Probability (Pc)       - 2-D isotropic Gaussian in the encounter plane: Pc is the
@@ -59,21 +62,57 @@ def altitude_band_filter(cat: pd.DataFrame, lo_km: float, hi_km: float, margin_k
     return (cat["perigee_km"] <= hi_km + margin_km) & (cat["apogee_km"] >= lo_km - margin_km)
 
 
+def maneuver_envelope_km(spec: MissionSpec, dalt_max_km: float = S.DALT_MAX_KM,
+                         dv_max_ms: float = S.DV_MAX_MS) -> float:
+    """Largest distance between the nominal path and any allowed (dalt, dv) plan at equal slip.
+
+    The deviation grows monotonically with |dalt| and |dv| (along-track drift accumulates), so
+    the maximum over the box is reached at its corners and edges, which we evaluate directly."""
+    tau = spec.tau
+    nominal, _ = trajectory(spec, ManeuverPlan(), tau)
+    worst = 0.0
+    for da in (-dalt_max_km, 0.0, dalt_max_km):
+        for dv in (-dv_max_ms, 0.0, dv_max_ms):
+            if da == 0.0 and dv == 0.0:
+                continue
+            p, _ = trajectory(spec, ManeuverPlan(dalt_km=da, dv_ms=dv), tau)
+            worst = max(worst, float(np.linalg.norm(p - nominal, axis=1).max()))
+    return worst
+
+
+def closest_to_any_slip(r: np.ndarray, plans: list, slip_grid: np.ndarray, grid: np.ndarray,
+                        dt: float) -> np.ndarray:
+    """Per object, the smallest sampled distance to the nominal path of any allowed slip.
+    r: (N, G, 3) object ephemeris on `grid`; plans[i]: (M, 3) nominal path for slip_grid[i]."""
+    best = np.full(len(r), np.inf, dtype=np.float32)
+    for si, s in enumerate(slip_grid):
+        k = int(round((s - grid[0]) / dt))
+        d = np.linalg.norm(r[:, k:k + len(plans[si]), :] - plans[si][None], axis=2)
+        best = np.minimum(best, np.nanmin(np.where(np.isnan(d), np.inf, d), axis=1))
+    return best
+
+
 def build_context(spec: MissionSpec, catalog: pd.DataFrame, slip_max_s: float = 600.0,
-                  slip_step_s: float = 60.0, dalt_max_km: float = 10.0, keep_km: float = 150.0,
+                  slip_step_s: float = 60.0, dalt_max_km: float = S.DALT_MAX_KM,
+                  dv_max_ms: float = S.DV_MAX_MS, keep_km: float | None = None,
                   chunk: int = 500) -> ScreeningContext:
     dt = spec.dt_s
     slip_grid = np.arange(-slip_max_s, slip_max_s + 1e-9, slip_step_s)
     grid = np.arange(-slip_max_s, slip_max_s + spec.duration_s + dt, dt)
     tau = spec.tau
-    stats = {"catalog_objects": int(len(catalog))}
+    envelope = maneuver_envelope_km(spec, dalt_max_km, dv_max_ms)
+    if keep_km is None:
+        keep_km = envelope + S.REPORT_KM
+    stats = {"catalog_objects": int(len(catalog)), "maneuver_envelope_km": round(envelope, 1),
+             "keep_km": round(float(keep_km), 1)}
 
-    # 1. altitude-band filter (vehicle spans ~0 km to target+dalt during ascent/orbit)
+    # 1. altitude-band filter (vehicle spans ~0 km to target+dalt during ascent/orbit; a phasing
+    #    burn raises the apogee by about 4*a*dv/v, which the 50 km band margin covers)
     band = altitude_band_filter(catalog, 80.0, spec.target_alt_km + dalt_max_km)
     cand = catalog[band].reset_index(drop=True)
     stats["after_altitude_filter"] = int(len(cand))
 
-    # nominal trajectories for every allowed slip (dalt/dv variants stay within keep_km margin)
+    # nominal trajectories for every allowed slip (dalt/dv variants stay within the envelope)
     plans = [trajectory(spec, ManeuverPlan(slip_s=s))[0].astype(np.float32) for s in slip_grid]
     jd0, fr0 = to_jd(spec.launch_time)
     jd = np.full(len(grid), jd0)
@@ -87,12 +126,7 @@ def build_context(spec: MissionSpec, catalog: pd.DataFrame, slip_max_s: float = 
         r = r.astype(np.float32)
         del _
         r[err != 0] = np.nan
-        best = np.full(len(sub), np.inf, dtype=np.float32)
-        for si, s in enumerate(slip_grid):                   # 3. proximity prune
-            k = int(round((s - grid[0]) / dt))
-            d = np.linalg.norm(r[:, k:k + len(tau), :] - plans[si][None], axis=2)
-            best = np.minimum(best, np.nanmin(np.where(np.isnan(d), np.inf, d), axis=1))
-        keep = best < keep_km
+        keep = closest_to_any_slip(r, plans, slip_grid, grid, dt) < keep_km   # 3. proximity prune
         kept_pos.append(r[keep])
         kept_rows.append(sub[keep])
     rows = pd.concat(kept_rows) if kept_rows else cand.iloc[:0]
@@ -140,7 +174,7 @@ class Screening:
     pc: np.ndarray
     plan: ManeuverPlan
 
-    def conjunctions(self, ctx: ScreeningContext, report_km: float = 25.0) -> list[dict]:
+    def conjunctions(self, ctx: ScreeningContext, report_km: float = S.REPORT_KM) -> list[dict]:
         out = []
         for i in np.argsort(self.miss_km):
             if self.miss_km[i] > report_km:
