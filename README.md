@@ -1,15 +1,48 @@
-# SDATOS: Space Debris Avoidance & Trajectory Optimization System
+# SentinelFlight
 
-A launch-planning system that checks a planned launch against every tracked object in orbit and, when the trajectory is risky, uses a **Double Deep Q-Network (DDQN)** agent to find the cheapest safe fix: shift the launch time, change the insertion altitude, or add a phasing burn. Each proposed plan is screened again by the physics engine before it is accepted, and the result is shown in a three.js mission console.
+**Fly real rockets through the real sky.** SentinelFlight is a launch and orbit-operations game built on the public space-object catalog. Every satellite and piece of debris is propagated with SGP4, every launch is screened for collisions, and your rocket is integrated from the pad to orbit with real physics. The collision-avoidance AI is the Double DQN agent trained in this repository.
 
 ```
-Space-Track.org ─► 7-day TLE window ─► super dataset ─► SGP4 back-test ─► conjunction screening ─► Double DQN ─► verify ─► report + 3-D
-  (daily pulls)      (59.5k elsets)    (23.8k objects)   (σ model)         (Pc per object)          (plan)      (guard)
+Space-Track / CelesTrak ─► auto-refreshed catalog ─► SGP4 in the browser ─► launch-window screening ─► Sentinel AI (Double DQN, verified)
+   (server, every 6 h)       (sanity-checked swap)      (web workers)          (blackout chart)            ─► fly it ─► dodge in orbit ─► de-orbit
 ```
 
-All numbers below come from the scripts in this repo and are committed under [`artifacts/`](artifacts).
+## The game
+
+| Phase | What you do | What is simulated |
+|---|---|---|
+| **Setup** | Pick a vehicle (Electron, Falcon 9, Falcon Heavy, Soyuz-2.1b/Fregat, PSLV-XL, Ariane 64), site, orbit, payload and lift-off time | Rocket-equation Δv budget per stage, lift-off thrust-to-weight, rotating-Earth launch azimuth |
+| **Pre-flight** | Wait for the flight computer and the screening | Pitch-kick search over full ascent simulations; SGP4 propagation of the catalog in web workers; prune with the maneuver envelope |
+| **Launch COLA** | Choose a lift-off minute from the launch-window chart, adjust insertion altitude and phasing burn, or ask **Sentinel** | Closest approach and collision probability for every plan; guarded Double DQN with independent re-screening |
+| **Flight** | Watch, or take over throttle, steering and staging; chase, tracking, onboard and map cameras; time warp | See *Physics* below. Hard steering through max-Q breaks the vehicle; solids cannot be throttled or shut down |
+| **Orbit ops** | Dodge conjunctions with RTN burns, survive fragmentation events, deploy the payload, de-orbit the stage | J2 propagation, live re-screening of every burn, outcome of each close approach drawn from its Pc |
+| **Debrief** | Stars and score | Δv losses (gravity / drag / steering), insertion accuracy, safety, sustainability |
+
+The campaign has six missions, from *First Light* (Electron, training) to *Heavy Weather* (Falcon Heavy, pre-launch debris events plus an in-orbit breakup). Free flight lets you fly anything in the catalog window. Progress is saved in the browser.
+
+### Physics (all tested in `tests/js/`)
+
+* **Ascent**: RK4 in the inertial (TEME) frame, with gravity plus J2, drag in the U.S. Standard Atmosphere 1976 relative to the rotating air with a Mach-dependent Cd, and nozzle thrust F = F<sub>vac</sub> − (F<sub>vac</sub> − F<sub>sl</sub>)·p/p₀. Mass flow comes from the vacuum Isp. Steps are cut exactly at burnout; boosters (including PSLV's air-lit pair) and staging are handled, and spent stages fall ballistically to a computed impact point.
+* **Guidance**: a pitch kick toward the rotating-Earth azimuth, then a zero-AoA gravity turn with max-Q throttling and a q·α limit, then closed-loop vacuum guidance into a 200 km × target transfer orbit and circularisation at apoapsis. The Electron kick stage, Fregat and PS4 restarts all work as on the real vehicles.
+* **Results**: all six vehicles reach their target orbits within 3 % in altitude and 0.1° in inclination, with gravity losses of 1.2–1.5 km/s and drag losses of 50–150 m/s. The Δv accounting closes: ideal − gravity − drag − steering = Δ|v|.
+* **Screening**: SGP4 position and velocity every 60 s, cubic Hermite interpolation, a closed-form closest approach per segment refined by golden-section search (within 5 m and 0.05 s of brute force), and Pc from the same non-central χ² model as the Python screener (matches scipy to 1e-6 relative). A full screen of ~2,500 objects takes 15–40 ms.
+* **Cross-checks**: GMST matches python-sgp4 to 1e-9 rad. The browser Double DQN matches the numpy policy to 1e-4. On the title screen the page compares satellite.js against python-sgp4 (`/api/sgp4-check`) and shows the largest difference.
+* Vehicle figures are approximate public values (`src/interface/static/sf/physics/vehicles.js`).
+
+### Live data
+
+The server refreshes the catalog in the background (`SENTINEL_LIVE=1`, every `SENTINEL_REFRESH_H` hours, at least 2 h apart):
+
+* **Space-Track** (`SPACETRACK_USERNAME` / `SPACETRACK_PASSWORD`): the full public catalog, including payloads, rocket bodies and debris.
+* **CelesTrak** fallback (no account): active payloads plus the four large debris clouds. This is a *partial* catalog, and the game labels it so. CelesTrak refuses a repeat download of a group within 2 h, so raw pulls are cached in `data/live_raw/`.
+* Each pull is built in a temporary folder, sanity-checked (minimum object count, no future epochs; a pre-launch element set is dropped), then swapped in atomically. A failed or suspicious pull never replaces a good catalog. If the live catalog is older than 4 days, the app falls back to the committed seed snapshot. `/healthz` reports the dataset and refresh status.
+* `python -m src.cli live` performs one refresh by hand. The daily GitHub Action runs the same pull as a health check.
 
 ---
+
+## Science behind it
+
+The sections below describe the data pipeline, the uncertainty model and the RL agent that SentinelFlight is built on. All numbers come from the scripts in this repo and are committed under [`artifacts/`](artifacts). The screening prune margin was later widened to the full maneuver envelope (see *Bug the tests caught, #2*); the RL tables were produced before that change.
 
 ## 1. Data: from raw TLEs to a "super dataset"
 
@@ -49,6 +82,8 @@ The error is almost entirely **along-track**, roughly 10× the radial error, whi
 3. **Proximity prune**: keep only objects that come within 120–150 km of any candidate plan, leaving **~1.3–1.9k**
 4. **Closed-form TCA**: between samples, relative motion is nearly linear, so the time and distance of closest approach are solved exactly. This is checked against a 1 ms brute force (within 50 m) in `tests/`.
 5. **Probability of collision**: 2-D Gaussian in the encounter plane, `Pc = ncx2.cdf((HBR/σ)², 2, (miss/σ)²)`, checked against Monte Carlo in `tests/`. RED means Pc ≥ 1e-4 (NASA CARA maneuver threshold) or miss < 1 km.
+
+> **Bug the tests caught, #2.** The prune used a fixed 150 km margin, but the largest allowed altitude change plus phasing burn moves the vehicle up to ~225 km from nominal, so an object on that path was dropped before screening and neither the agent nor the guard could ever see it. The margin is now computed from the maneuver envelope plus the reporting radius (~250 km), and a regression test covers it.
 
 Building the context takes ~4–8 s per mission. After that, **re-screening any candidate plan takes ~15–20 ms**, and that is what makes RL practical here.
 
@@ -97,15 +132,18 @@ Out of 30 random launches against the March 2025 catalog, **11 had an AMBER conj
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements-train.txt          # serving only: requirements.txt
 
-python -m src.cli all                          # build super dataset + back-test + figures
+python run.py                                  # http://127.0.0.1:5000  SentinelFlight (/planner, /evidence)
+SENTINEL_LIVE=1 python run.py                  # ... with background live-catalog refresh
+python -m src.cli live                         # refresh the live catalog once (data/live/)
+
+python -m pytest -q                            # Python: pipeline, screening, RL, API, live data
+node --test tests/js/*.test.mjs                # game physics: ascent, J2, atmosphere, Pc, TCA, AI parity, pipeline
+
+python -m src.cli all                          # rebuild the seed dataset + back-test + figures
 python -m src.cli plan --rocket "Falcon 9" --alt 550 --launch 2025-03-12T06:00
 python -m src.rl.train --episodes 4000         # Double DQN   (--vanilla for the DQN ablation)
 python -m src.rl.evaluate --scenarios 200      # held-out comparison -> artifacts/evaluation.json
-python -m pytest -q                            # 15 tests
-python run.py                                  # http://127.0.0.1:5000  (console + /evidence)
-
-export SPACETRACK_USERNAME=... SPACETRACK_PASSWORD=...
-python -m src.cli fetch --history              # pull a fresh 7-day history from Space-Track
+python -m src.cli export-policy                # DDQN weights -> the in-browser Sentinel
 ```
 
 ## Deployment
@@ -134,9 +172,12 @@ src/physics/     frames.py (TEME/GMST/RTN) · mission.py (ascent + Kepler, maneu
 src/screening/   conjunction.py (filters, vectorized SGP4, TCA, Pc)
 src/rl/          env.py · scenarios.py · ddqn.py · policies.py · train.py · evaluate.py
 src/pipeline/    planner.py (end-to-end) · src/reporting/figures.py · src/cli.py
-src/interface/   Flask app, three.js console, report + evidence pages
+src/data/        live.py (auto-refresh) · active.py (live vs seed)
+src/interface/   Flask app; static/sf/ = SentinelFlight (physics/, ai/, game/, workers/)
+tests/js/        node tests for the game physics
 artifacts/       committed metrics & figures      models/ddqn_policy.npz  serving weights
 legacy/          the pre-rebuild implementation (kept for comparison)
+classic planner  /planner: server-side screening + guarded DDQN (the original console)
 ```
 
 ## Limits (on purpose)

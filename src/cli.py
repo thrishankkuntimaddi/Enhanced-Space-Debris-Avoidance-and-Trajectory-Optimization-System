@@ -3,6 +3,7 @@
 Command line entry point.
 
     python -m src.cli fetch [--history]     pull a snapshot from Space-Track (or CelesTrak)
+    python -m src.cli live                  pull today's catalog (Space-Track or CelesTrak) -> data/live/
     python -m src.cli build                 7-day window -> super dataset + data-quality report
     python -m src.cli validate              SGP4 back-test -> uncertainty model
     python -m src.cli plan --rocket "Falcon 9" --alt 550 --launch 2025-03-12T06:00 [--threats 3]
@@ -21,6 +22,31 @@ from datetime import datetime, timezone
 def cmd_fetch(a):
     from src.data.spacetrack_client import collect
     print(f"saved snapshot: {collect(history=a.history)}")
+
+
+def cmd_live(a):
+    from src.data.live import refresh
+    q = refresh()
+    print(json.dumps({k: q[k] for k in ("source_kind", "fetched_utc", "reference_epoch", "unique_objects",
+                                        "object_types", "partial_catalog", "build_s")}, indent=2, default=str))
+
+
+def cmd_export_policy(a):
+    """DDQN weights -> JSON (base64 float32) for the in-browser Sentinel AI."""
+    import base64
+    import numpy as np
+    from src.config import settings as S
+    w = np.load(S.POLICY_WEIGHTS)
+    out = {"dueling": bool(w["dueling"]), "layers": {}}
+    for k in w.files:
+        if k == "dueling":
+            continue
+        a_ = np.ascontiguousarray(w[k].astype("<f4"))
+        out["layers"][k.replace("__", ".")] = {"shape": list(a_.shape), "b64": base64.b64encode(a_.tobytes()).decode()}
+    path = S.STATIC_DIR / "sf" / "data" / "ddqn_policy.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(out))
+    print(f"wrote {path} ({path.stat().st_size / 1e3:.0f} kB)")
 
 
 def cmd_build(a):
@@ -72,6 +98,8 @@ def main():
     ap = argparse.ArgumentParser(prog="sdatos")
     sub = ap.add_subparsers(dest="cmd", required=True)
     f = sub.add_parser("fetch"); f.add_argument("--history", action="store_true"); f.set_defaults(fn=cmd_fetch)
+    sub.add_parser("live").set_defaults(fn=cmd_live)
+    sub.add_parser("export-policy").set_defaults(fn=cmd_export_policy)
     sub.add_parser("build").set_defaults(fn=cmd_build)
     sub.add_parser("validate").set_defaults(fn=cmd_validate)
     sub.add_parser("figures").set_defaults(fn=cmd_figures)

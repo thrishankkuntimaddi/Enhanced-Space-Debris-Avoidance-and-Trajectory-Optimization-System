@@ -103,3 +103,38 @@ def test_numpy_export_matches_torch(tmp_path):
     pol = NumpyQPolicy(path)
     s = np.random.default_rng(0).normal(size=STATE_DIM).astype(np.float32)
     assert np.allclose(pol.q(s), agent.q_values(s), atol=1e-5)
+
+
+def test_prune_margin_covers_every_allowed_plan(spec):
+    """Regression: the prune used a fixed 150 km margin, but the largest allowed altitude change
+    plus phasing burn moves the vehicle ~225 km from nominal. An object on that path was dropped
+    before screening, so neither the agent nor the guard could ever see it."""
+    from src.config import settings as S
+    from src.screening.conjunction import closest_to_any_slip, maneuver_envelope_km
+
+    envelope = maneuver_envelope_km(spec)
+    nominal, _ = trajectory(spec, ManeuverPlan(), spec.tau)
+    rng = np.random.default_rng(1)
+    for _ in range(25):   # every plan inside the action box stays inside the envelope
+        plan = ManeuverPlan(dalt_km=rng.uniform(-S.DALT_MAX_KM, S.DALT_MAX_KM),
+                            dv_ms=rng.uniform(-S.DV_MAX_MS, S.DV_MAX_MS))
+        p, _ = trajectory(spec, plan, spec.tau)
+        assert np.linalg.norm(p - nominal, axis=1).max() <= envelope + 1e-6
+
+    # an object riding the most extreme allowed plan must survive the prune
+    ctx = empty_context(spec)
+    extreme = ManeuverPlan(dalt_km=S.DALT_MAX_KM, dv_ms=S.DV_MAX_MS)
+    obj = np.full((1, len(ctx.grid_s), 3), np.nan, np.float32)
+    k = ctx.index_of_slip(0.0)
+    late = slice(len(spec.tau) - 30, len(spec.tau))     # meets the extreme path near the end
+    obj[0, k + late.start:k + late.stop] = trajectory(spec, extreme, spec.tau[late])[0]
+    plans = [trajectory(spec, ManeuverPlan(slip_s=s))[0].astype(np.float32) for s in ctx.slip_grid_s]
+    closest = closest_to_any_slip(obj, plans, ctx.slip_grid_s, ctx.grid_s, spec.dt_s)[0]
+    assert closest > 150.0                                # the old margin would have dropped it
+    assert closest < envelope + S.REPORT_KM               # the new default keeps it
+
+    # and once kept, screening that plan finds it at (near) zero miss
+    ctx.pos = obj
+    ctx.ids, ctx.names, ctx.types = np.array([-1]), ["RIDER"], ["SYNTHETIC"]
+    ctx.sigma_km, ctx.hbr_km = np.array([0.5]), np.array([0.01])
+    assert screen(ctx, extreme).miss_km[0] < 0.01

@@ -106,5 +106,5 @@ def build_backgrounds(catalog: pd.DataFrame, n: int, seed: int) -> list[Screenin
     out = []
     for _ in range(n):
         spec = sample_mission(rng, ref - timedelta(days=2), ref + timedelta(days=1))
-        out.append(build_context(spec, catalog, slip_max_s=600, keep_km=120))
+        out.append(build_context(spec, catalog, slip_max_s=600))
     return out

@@ -1,19 +1,21 @@
-# Daily TLE collection: accumulates the 7-day window of snapshots used by the pipeline.
-name: Collect TLE snapshot
+# Daily live-data check: pulls today's catalog exactly as the server does (Space-Track when the
+# secrets are set, CelesTrak otherwise), builds it, and fails loudly if the pull or the sanity
+# checks fail. The built catalog is kept as a workflow artifact for 8 days.
+name: Live catalog check
 on:
   schedule: [{ cron: "15 3 * * *" }]
   workflow_dispatch:
 jobs:
-  collect:
+  live:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
       - run: pip install -r requirements.txt
-      - run: python -m src.cli fetch
+      - run: python -m src.cli live
         env:
           SPACETRACK_USERNAME: ${{ secrets.SPACETRACK_USERNAME }}
           SPACETRACK_PASSWORD: ${{ secrets.SPACETRACK_PASSWORD }}
       - uses: actions/upload-artifact@v4
-        with: { name: tle-snapshot, path: inputs/snapshots/, retention-days: 8 }
+        with: { name: live-catalog, path: data/live/, retention-days: 8 }

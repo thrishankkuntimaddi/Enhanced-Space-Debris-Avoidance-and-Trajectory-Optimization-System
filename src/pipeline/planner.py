@@ -21,9 +21,9 @@ from sgp4.api import Satrec, SatrecArray
 
 from src.config import settings as S
 from src.data.propagation_validation import load_sigma_model
-from src.data.tle_pipeline import load_catalog
+from src.data.tle_pipeline import active_quality, load_catalog
 from src.physics.frames import gmst, to_jd
-from src.pipeline.presets import PRESETS
+from src.pipeline.presets import resolved as resolved_presets
 from src.physics.mission import MissionSpec, ManeuverPlan, get_rocket, maneuver_dv_cost_ms, trajectory, orbit_inclination_deg
 from src.rl.env import AvoidanceEnv, Scenario, screen_scenario
 from src.rl.policies import GreedyLookahead, GuardedPolicy, NumpyQPolicy
@@ -56,12 +56,6 @@ def policy_cached():
     return GreedyLookahead()
 
 
-def catalog_window():
-    cat = catalog_cached()
-    ref = cat["epoch"].max().to_pydatetime()
-    return ref - timedelta(days=3), ref + timedelta(days=2)
-
-
 def _conj_table(ctx_parts, combined, plan, spec, limit=15, report_km=25.0):
     rows = []
     for part, ctx in ctx_parts:
@@ -85,7 +79,7 @@ def export_preset_cache() -> list:
     """Compute every preset and store it gzipped under data/preset_cache/ (committed)."""
     PRESET_CACHE_DIR.mkdir(parents=True, exist_ok=True)
     out = []
-    for p in PRESETS:
+    for p in resolved_presets(active_quality()["reference_epoch"]):
         launch = datetime.fromisoformat(p["launch"]).replace(tzinfo=timezone.utc)
         key = plan_cache_key(p["rocket"], p["alt"], launch, p.get("inc"), p["threats"], p["slip"], p["seed"])
         rep = plan_mission(p["rocket"], p["alt"], launch, p.get("inc"), p["threats"], p["slip"], p["seed"])
@@ -104,8 +98,14 @@ def plan_cache_key(rocket, target_alt_km, launch_time, inclination_deg, syntheti
     """Deterministic inputs -> deterministic plan, so identical requests are served from disk."""
     raw = json.dumps([rocket, float(target_alt_km), launch_time.strftime("%Y-%m-%dT%H:%M"),
                       None if inclination_deg is None else float(inclination_deg), int(synthetic_threats),
-                      float(slip_allowed_s), int(seed), _model_stamp()])
+                      float(slip_allowed_s), int(seed), _model_stamp(), _data_stamp()])
     return hashlib.sha1(raw.encode()).hexdigest()[:16]
+
+
+def _data_stamp() -> str:
+    """Identifies the catalog a plan was computed against, so a data refresh invalidates the cache."""
+    q = active_quality()
+    return f"{q['dataset']}|{q['reference_epoch']}|{q['unique_objects']}"
 
 
 def _model_stamp() -> str:
@@ -183,14 +183,14 @@ def plan_mission(rocket: str, target_alt_km: float, launch_time: datetime, incli
     verdict = ("GO" if not nominal.red.any() and not nominal.amber.any() else
                "GO WITH AVOIDANCE PLAN" if n_red == 0 else "NO-GO: residual high-risk conjunction")
     sm = load_sigma_model()
-    with open(S.ARTIFACTS_DIR / "data_quality.json") as f:
-        quality = json.load(f)
+    quality = active_quality()
 
     report = {
         "id": f"{launch_time:%Y%m%dT%H%M}_{rocket.replace(' ', '')}_{uuid.uuid4().hex[:6]}",
         "generated_utc": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
         "verdict": verdict,
-        "data": {"source": ", ".join(quality["sources"]), "reference_epoch": quality["reference_epoch"],
+        "data": {"source": ", ".join(quality["sources"]), "dataset": quality["dataset"],
+                 "reference_epoch": quality["reference_epoch"],
                  "window_days": quality["window_days"], "catalog_objects": quality["unique_objects"],
                  "elsets_in_history": quality["elsets_in_history"],
                  "sigma_model": f"sigma(age) = {sm['sigma0_km']} km + {sm['k_km_per_day']} km/day x age"},

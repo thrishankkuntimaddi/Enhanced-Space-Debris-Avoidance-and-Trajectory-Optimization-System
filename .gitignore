@@ -9,3 +9,9 @@ data/tle_history.csv
 data/catalog.csv
 inputs/snapshots/
 models/*.pt
+.idea/
+.pytest_cache/
+node_modules/
+data/live/
+data/live.old/
+data/live_raw/

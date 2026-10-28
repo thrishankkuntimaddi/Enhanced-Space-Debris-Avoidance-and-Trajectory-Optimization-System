@@ -24,8 +24,12 @@ TLE_RAW         = INPUTS_DIR / "tle_raw.txt"       # seed snapshot (Space-Track,
 CATALOG_CSV     = DATA_DIR / "catalog.csv"         # "super dataset": 1 row per object
 CATALOG_TLE     = DATA_DIR / "tle_data.txt"        # latest elset per object (3LE)
 HISTORY_CSV     = DATA_DIR / "tle_history.csv"     # every valid elset in the window
+LIVE_DIR        = DATA_DIR / "live"                # auto-refreshed catalog (gitignored)
 POLICY_WEIGHTS  = MODELS_DIR / "ddqn_policy.npz"   # numpy weights used for serving
 TORCH_CKPT      = MODELS_DIR / "ddqn_policy.pt"    # PyTorch checkpoint used for training
+
+# ── Live data ───────────────────────────────────────────────────────────────
+LIVE_MAX_AGE_DAYS    = 4.0      # a live catalog older than this is ignored (falls back to the seed)
 
 # ── Physical constants (WGS-72, consistent with SGP4) ───────────────────────
 MU_KM3_S2   = 398600.8          # km^3/s^2
@@ -47,6 +51,12 @@ PC_RED               = 1e-4     # NASA CARA-style maneuver threshold
 PC_AMBER             = 1e-6
 MISS_RED_KM          = 1.0
 MISS_AMBER_KM        = 5.0
+REPORT_KM            = 25.0     # conjunctions closer than this are reported
+
+# ── Avoidance-plan limits (shared by the screener's prune margin and the RL action space) ──
+DALT_MAX_KM          = 10.0     # insertion altitude offset
+DV_MAX_MS            = 3.0      # along-track phasing impulse
+DV_BUDGET_MS         = 10.0     # total extra delta-v
 
 for _d in (DATA_DIR, INPUTS_DIR, SNAPSHOTS_DIR, OUTPUTS_DIR, REPORTS_DIR, MODELS_DIR, ARTIFACTS_DIR):
     _d.mkdir(parents=True, exist_ok=True)

@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SentinelFlight</title>
+  <meta name="description" content="Launch real rockets through the real sky: a physics-true launch and orbit-operations game built on the live space-object catalog.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Cpath d=%22M16 2 L21 18 L16 15 L11 18 Z%22 fill=%22%2338e1ff%22/%3E%3Ccircle cx=%2216%22 cy=%2224%22 r=%225%22 fill=%22none%22 stroke=%22%23ffb547%22 stroke-width=%222%22/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='sf/sentinel.css') }}">
+  <script type="importmap">
+    { "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    } }
+  </script>
+</head>
+<body>
+<canvas id="view"></canvas>
+<div id="vignette"></div>
+
+<!-- ═══ TITLE ═══════════════════════════════════════════════════════════ -->
+<section id="scr-title" class="screen active">
+  <div class="title-wrap">
+    <div class="kicker">Live orbital catalog · physics-true launch simulation</div>
+    <h1 class="logo">SENTINEL<span>FLIGHT</span></h1>
+    <p class="tagline">Fly real rockets through the real sky. Thousands of tracked satellites and debris, propagated with SGP4, every launch screened for collisions, every burn obeying Newton.</p>
+    <div class="menu">
+      <button class="btn primary" data-go="campaign"><b>Campaign</b><small>Six missions, real vehicles, real catalog</small></button>
+      <button class="btn" data-go="free"><b>Free flight</b><small>Any rocket, any orbit, any time in the data window</small></button>
+      <button class="btn" data-go="manual"><b>Flight manual</b><small>Controls, physics and scoring</small></button>
+      <a class="btn ghost" href="/planner"><b>Classic planner</b><small>Server-side screening + guarded DDQN</small></a>
+      <a class="btn ghost" href="/evidence"><b>Evidence</b><small>Data quality, back-test, AI evaluation</small></a>
+    </div>
+  </div>
+  <div class="data-badge" id="data-badge"><span class="pulse"></span><span id="data-text">Loading the catalog…</span></div>
+  <div class="sgp4-check" id="sgp4-check"></div>
+</section>
+
+<!-- ═══ CAMPAIGN ════════════════════════════════════════════════════════ -->
+<section id="scr-campaign" class="screen">
+  <header class="scr-head"><button class="back" data-go="title">← Menu</button><h2>Campaign</h2><div class="total-stars" id="total-stars"></div></header>
+  <div class="mission-grid" id="mission-grid"></div>
+</section>
+
+<!-- ═══ HANGAR / BRIEFING ═══════════════════════════════════════════════ -->
+<section id="scr-hangar" class="screen">
+  <header class="scr-head"><button class="back" data-go="back">← Back</button><h2 id="hangar-title">Mission setup</h2><div></div></header>
+  <div class="hangar">
+    <aside class="panel vehicles" id="vehicle-list"></aside>
+    <div class="panel config">
+      <div class="brief" id="brief"></div>
+      <div class="vehicle-hero" id="vehicle-hero"></div>
+      <div class="grid2">
+        <label>Launch site<select id="cfg-site"></select></label>
+        <label>Launch window<select id="cfg-window">
+          <option value="0">Instantaneous</option><option value="120">± 2 min</option>
+          <option value="300">± 5 min</option><option value="600" selected>± 10 min</option></select></label>
+        <label>Target altitude <b id="v-alt"></b><input id="cfg-alt" type="range" min="300" max="1200" step="5"></label>
+        <label>Inclination <b id="v-inc"></b><input id="cfg-inc" type="range" min="0" max="110" step="0.1"></label>
+        <label>Payload <b id="v-pl"></b><input id="cfg-pl" type="range" min="50" max="20000" step="10"></label>
+        <label>Launch time (UTC)<input id="cfg-time" type="datetime-local" step="60"></label>
+      </div>
+      <div class="hint" id="cfg-hint"></div>
+    </div>
+    <aside class="panel perf">
+      <h3>Performance</h3>
+      <div id="perf"></div>
+      <button class="btn primary wide" id="btn-prepare"><b>Run pre-flight</b><small>Flight computer + SGP4 collision screening</small></button>
+    </aside>
+  </div>
+</section>
+
+<!-- ═══ PREP (progress) ═════════════════════════════════════════════════ -->
+<section id="scr-prep" class="screen">
+  <div class="prep">
+    <div class="radar"><div class="sweep"></div></div>
+    <h2 id="prep-title">Pre-flight</h2>
+    <div class="bar"><i id="prep-bar"></i></div>
+    <div class="prep-log" id="prep-log"></div>
+  </div>
+</section>
+
+<!-- ═══ LAUNCH COLA ═════════════════════════════════════════════════════ -->
+<section id="scr-cola" class="screen">
+  <header class="scr-head"><button class="back" data-go="hangar">← Setup</button><h2>Launch collision avoidance</h2><div class="cola-stats" id="cola-stats"></div></header>
+  <div class="cola">
+    <div class="panel chart-panel">
+      <h3>Launch window <span class="muted">closest approach for every lift-off time · click to choose</span></h3>
+      <canvas id="blackout" height="220"></canvas>
+      <div class="legend"><span class="sw red"></span>RED: Pc ≥ 1e-4 or miss &lt; 1 km (no-launch)<span class="sw amber"></span>AMBER: Pc ≥ 1e-6 or miss &lt; 5 km<span class="sw green"></span>clear</div>
+      <h3>Conjunctions for the selected plan</h3>
+      <div class="table-wrap"><table id="conj-table"></table></div>
+    </div>
+    <div class="panel plan-panel">
+      <h3>Plan</h3>
+      <div class="plan-grid">
+        <label>Launch slip <b id="v-slip">0 s</b><input id="plan-slip" type="range" step="60"></label>
+        <label>Insertion offset <b id="v-dalt">0 km</b><input id="plan-dalt" type="range" min="-10" max="10" step="2" value="0"></label>
+        <label>Phasing burn <b id="v-dv">0 m/s</b><input id="plan-dv" type="range" min="-3" max="3" step="0.5" value="0"></label>
+      </div>
+      <div class="verdict" id="plan-verdict"></div>
+      <div class="ai-box">
+        <div class="ai-head"><span class="ai-eye"></span><b>SENTINEL</b><span class="muted">Double DQN agent · verified by re-screening</span></div>
+        <div id="ai-out" class="ai-out">Ask Sentinel for the cheapest safe plan. It searches slip, insertion altitude and phasing burn, and every plan it proposes is independently re-screened.</div>
+        <button class="btn wide" id="btn-ai"><b>Ask Sentinel</b></button>
+      </div>
+      <button class="btn primary wide" id="btn-golaunch"><b>Go for launch</b><small id="go-sub">Proceed to the pad</small></button>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ FLIGHT HUD ══════════════════════════════════════════════════════ -->
+<section id="scr-flight" class="screen hud">
+  <div class="hud-top">
+    <div class="hud-mission" id="hud-mission"></div>
+    <div class="hud-clock"><span id="hud-tminus">T+</span><b id="hud-clock">00:00:00</b><span class="hud-phase" id="hud-phase">PAD</span></div>
+    <div class="hud-warp"><span id="hud-warp">1×</span><span id="hud-ap" class="ap on">AUTOPILOT</span></div>
+  </div>
+  <div class="hud-left panel glass" id="hud-tele"></div>
+  <div class="hud-right panel glass">
+    <div id="hud-stages"></div>
+    <div class="orbit-box" id="hud-orbit"></div>
+  </div>
+  <div class="hud-charts panel glass">
+    <canvas id="ch-alt" width="260" height="70"></canvas>
+    <canvas id="ch-q" width="260" height="70"></canvas>
+  </div>
+  <div class="hud-attitude panel glass"><canvas id="att" width="150" height="150"></canvas></div>
+  <div class="hud-events" id="hud-events"></div>
+  <div class="hud-callout" id="hud-callout"></div>
+  <div class="hud-bottom">
+    <div class="keys" id="hud-keys"></div>
+    <div class="cams" id="hud-cams"></div>
+  </div>
+  <!-- orbit operations -->
+  <div class="ops panel glass hidden" id="ops">
+    <h3>Orbit operations <span class="muted" id="ops-sub"></span></h3>
+    <div id="ops-conj"></div>
+    <div class="maneuver" id="maneuver">
+      <h4>Avoidance maneuver</h4>
+      <div class="plan-grid">
+        <label>Burn lead time <b id="v-lead"></b><input id="mv-lead" type="range" min="2" max="45" step="1" value="20"></label>
+        <label>Prograde <b id="v-pro"></b><input id="mv-pro" type="range" min="-10" max="10" step="0.1" value="0"></label>
+        <label>Radial <b id="v-rad"></b><input id="mv-rad" type="range" min="-10" max="10" step="0.1" value="0"></label>
+        <label>Normal <b id="v-nor"></b><input id="mv-nor" type="range" min="-10" max="10" step="0.1" value="0"></label>
+      </div>
+      <div class="verdict" id="mv-preview"></div>
+      <div class="row2"><button class="btn" id="btn-mv-ai"><b>Sentinel suggest</b></button><button class="btn primary" id="btn-mv-exec"><b>Schedule burn</b></button></div>
+    </div>
+    <div class="row2 end-row"><button class="btn" id="btn-dispose"><b>Deploy payload &amp; dispose stage</b></button><button class="btn ghost" id="btn-end"><b>End mission</b></button></div>
+  </div>
+  <div class="alert hidden" id="ca-alert"></div>
+</section>
+
+<!-- ═══ DEBRIEF ═════════════════════════════════════════════════════════ -->
+<section id="scr-debrief" class="screen">
+  <div class="debrief panel">
+    <div class="deb-head"><h2 id="deb-title">Mission debrief</h2><div class="stars" id="deb-stars"></div></div>
+    <div class="deb-grid">
+      <div><h3>Score</h3><table id="deb-score"></table></div>
+      <div><h3>Flight</h3><table id="deb-flight"></table></div>
+      <div><h3>Δv budget</h3><canvas id="deb-dv" width="360" height="180"></canvas><table id="deb-loss"></table></div>
+    </div>
+    <div class="row2"><button class="btn" data-go="hangar"><b>Fly again</b></button><button class="btn primary" id="btn-next"><b>Continue</b></button></div>
+  </div>
+</section>
+
+<!-- ═══ MANUAL ══════════════════════════════════════════════════════════ -->
+<section id="scr-manual" class="screen">
+  <header class="scr-head"><button class="back" data-go="title">← Menu</button><h2>Flight manual</h2><div></div></header>
+  <div class="manual panel" id="manual"></div>
+</section>
+
+<div class="toast" id="toast"></div>
+<script type="module" src="{{ url_for('static', filename='sf/game/main.js') }}"></script>
+</body>
+</html>
