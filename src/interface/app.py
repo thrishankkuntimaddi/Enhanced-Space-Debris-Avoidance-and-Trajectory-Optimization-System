@@ -217,6 +217,11 @@ def game():
     return render_template("sentinel.html")
 
 
+@app.get("/science")
+def science():
+    return render_template("science.html")
+
+
 @app.get("/planner")
 def console():
     return render_template("console.html")

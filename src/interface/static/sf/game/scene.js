@@ -47,8 +47,48 @@ uniform vec3 uColor; uniform float uPow; uniform float uK; varying vec3 vN; vary
   }));
 }
 
-function earthMaterial(tex) {
-  return new THREE.MeshPhongMaterial({ map: tex, shininess: 12, specular: new THREE.Color(0x223344) });
+// Day map + NASA night lights on the dark side (terminator from the real sun direction).
+function earthMaterial(tex, lights, sunView) {
+  const m = new THREE.MeshPhongMaterial({ map: tex, shininess: 12, specular: new THREE.Color(0x223344) });
+  if (!lights) return m;
+  m.onBeforeCompile = (sh) => {
+    sh.uniforms.uLights = { value: lights };
+    sh.uniforms.uSunView = sunView;
+    sh.fragmentShader = 'uniform sampler2D uLights; uniform vec3 uSunView;\n' + sh.fragmentShader.replace('#include <emissivemap_fragment>',
+      `#include <emissivemap_fragment>
+       float nd = dot(normalize(normal), uSunView);
+       totalEmissiveRadiance += pow(texture2D(uLights, vMapUv).rgb, vec3(1.4)) * vec3(1.0, 0.78, 0.5) * 2.2 * (1.0 - smoothstep(-0.18, 0.08, nd));`);
+  };
+  return m;
+}
+
+// Kepler + J2 secular drift on the CPU (same model as the GPU catalog shader).
+function keplerTEME(o, tSec) {
+  const raan = o.raan + o.dRaan * tSec, argp = o.argp + o.dArgp * tSec;
+  const M = (o.M + o.n * tSec) % (2 * Math.PI);
+  let E = M + o.e * Math.sin(M);
+  for (let k = 0; k < 6; k++) E -= (E - o.e * Math.sin(E) - M) / (1 - o.e * Math.cos(E));
+  const xv = o.a * (Math.cos(E) - o.e), yv = o.a * Math.sqrt(1 - o.e * o.e) * Math.sin(E);
+  const cO = Math.cos(raan), sO = Math.sin(raan), cw = Math.cos(argp), sw = Math.sin(argp), ci = Math.cos(o.inc), si = Math.sin(o.inc);
+  return [(cO * cw - sO * sw * ci) * xv + (-cO * sw - sO * cw * ci) * yv,
+    (sO * cw + cO * sw * ci) * xv + (-sO * sw + cO * cw * ci) * yv,
+    (sw * si) * xv + (cw * si) * yv];
+}
+
+// Crewed space stations, picked out of the catalog by NORAD id.
+export const STATIONS = { 25544: 'ISS', 48274: 'TIANGONG' };
+function labelSprite(text, color = '#ff3b4e') {
+  const c = document.createElement('canvas'), font = '600 46px "JetBrains Mono", monospace';
+  let g = c.getContext('2d'); g.font = font;
+  c.width = Math.ceil(80 + g.measureText(text).width); c.height = 128;
+  g = c.getContext('2d'); g.font = font;
+  g.fillStyle = color; g.beginPath(); g.arc(34, 64, 16, 0, 7); g.fill();
+  g.strokeStyle = 'rgba(0,0,0,.75)'; g.lineWidth = 8; g.strokeText(text, 66, 80);
+  g.fillStyle = '#ffffff'; g.fillText(text, 66, 80);
+  const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace;
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tx, transparent: true, depthTest: false, sizeAttenuation: false }));
+  s.center.set(34 / c.width, 0.5); s.scale.set(0.04 * c.width / 128, 0.04, 1); s.renderOrder = 10;
+  return s;
 }
 
 // ── GPU catalog: two-body + J2 secular drift evaluated in the vertex shader ─────────────────
@@ -132,6 +172,11 @@ export class Views {
     this.tex = new THREE.TextureLoader().load('/static/images/earth_2048.jpg');
     this.tex.colorSpace = THREE.SRGBColorSpace;
     this.tex.anisotropy = 8;
+    this.lights = new THREE.TextureLoader().load('/static/images/earth_lights_2048.png');
+    this.lights.colorSpace = THREE.SRGBColorSpace;
+    this.gSunView = { value: new THREE.Vector3(1, 0, 0) };
+    this.lSunView = { value: new THREE.Vector3(1, 0, 0) };
+    this.shake = { amp: 0, jolt: 0 };
     this.mode = 'globe';
     this._initGlobe();
     this._initLocal();
@@ -155,7 +200,7 @@ export class Views {
     this.controls.enableDamping = true; this.controls.minDistance = 6.6; this.controls.maxDistance = 140;
     this.gSun = new THREE.DirectionalLight(0xffffff, 2.6);
     s.add(this.gSun, new THREE.AmbientLight(0x6688aa, 0.35));
-    this.gEarth = new THREE.Mesh(new THREE.SphereGeometry(RE * K, 128, 96), earthMaterial(this.tex));
+    this.gEarth = new THREE.Mesh(new THREE.SphereGeometry(RE * K, 128, 96), earthMaterial(this.tex, this.lights, this.gSunView));
     s.add(this.gEarth);
     s.add(atmosphereShell(RE * K * 1.02, 0x4aa8ff, 5.0, 0.55));
     const n = 4000, a = new Float32Array(n * 3);
@@ -175,6 +220,17 @@ export class Views {
     if (this.cloud) this.gScene.remove(this.cloud.points);
     this.cloud = cloud;
     this.gScene.add(cloud.points);
+    if (this.stations) this.stations.forEach((st) => this.gScene.remove(st.mesh));
+    this.stations = cloud.index.filter((r) => STATIONS[r[0]]).map((r) => {
+      const mesh = new THREE.Group();
+      const dot = new THREE.Mesh(new THREE.SphereGeometry(0.03, 12, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+      const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: softDot(), color: 0xff3b4e, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+      halo.scale.setScalar(0.3); dot.add(halo);
+      const alt = Math.round((r[5] + r[6]) / 2);
+      mesh.add(dot, labelSprite(`${STATIONS[r[0]]} · ${alt} km`));
+      this.gScene.add(mesh);
+      return { id: r[0], name: STATIONS[r[0]], el: parseElements(r, cloud.baseMs), mesh };
+    });
   }
 
   clearGlobeLayer() { this.gLayer.clear(); }
@@ -210,7 +266,7 @@ export class Views {
     s.add(this.lSun, this.lSun.target);
     this.lAmb = new THREE.HemisphereLight(0xbfd8ff, 0x3a3020, 0.9);
     s.add(this.lAmb);
-    this.lEarth = new THREE.Mesh(new THREE.SphereGeometry(RE, 256, 192), earthMaterial(this.tex));
+    this.lEarth = new THREE.Mesh(new THREE.SphereGeometry(RE, 256, 192), earthMaterial(this.tex, this.lights, this.lSunView));
     s.add(this.lEarth);
     this.lAtmo = atmosphereShell(RE * 1.015, 0x5fb0ff, 4.0, 0.9);
     s.add(this.lAtmo);
@@ -228,19 +284,20 @@ export class Views {
     sg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(this.smokeN * 3), 3));
     sg.setAttribute('size', new THREE.BufferAttribute(new Float32Array(this.smokeN), 1));
     sg.setAttribute('alpha', new THREE.BufferAttribute(new Float32Array(this.smokeN), 1));
+    sg.setAttribute('age', new THREE.BufferAttribute(new Float32Array(this.smokeN), 1));
     this.smokePts = new THREE.Points(sg, new THREE.ShaderMaterial({
       transparent: true, depthWrite: false,
-      uniforms: { uTex: { value: softDot() }, uScale: { value: innerHeight } },
+      uniforms: { uTex: { value: softDot() }, uScale: { value: innerHeight }, uAmb: { value: new THREE.Color(0.86, 0.85, 0.83) }, uGlow: { value: new THREE.Color(0, 0, 0) } },
       vertexShader: `#include <common>
 #include <logdepthbuf_pars_vertex>
-attribute float size; attribute float alpha; varying float vA; uniform float uScale;
+attribute float size; attribute float alpha; attribute float age; varying float vA; varying float vAge; uniform float uScale;
         void main(){ vec4 mv = modelViewMatrix*vec4(position,1.); gl_Position = projectionMatrix*mv;
  #include <logdepthbuf_vertex>
- gl_PointSize = min(900.0, size * uScale / max(-mv.z, 1.0)); vA = alpha; }`,
+ gl_PointSize = min(900.0, size * uScale / max(-mv.z, 1.0)); vA = alpha; vAge = age; }`,
       fragmentShader: `#include <logdepthbuf_pars_fragment>
-uniform sampler2D uTex; varying float vA; void main(){
+uniform sampler2D uTex; uniform vec3 uAmb; uniform vec3 uGlow; varying float vA; varying float vAge; void main(){
  #include <logdepthbuf_fragment>
- vec4 t = texture2D(uTex, gl_PointCoord); gl_FragColor = vec4(vec3(0.86,0.85,0.83), t.a * vA); }`,
+ vec4 t = texture2D(uTex, gl_PointCoord); gl_FragColor = vec4(uAmb + uGlow * exp(-vAge / 2.5), t.a * vA); }`,
     }));
     this.smokePts.frustumCulled = false;
     s.add(this.smokePts);
@@ -255,6 +312,15 @@ uniform sampler2D uTex; varying float vA; void main(){
     for (let k = 0; k < 4; k++) {
       const lt = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 110, 8), new THREE.MeshStandardMaterial({ color: 0x9aa0a6 }));
       lt.position.set(Math.cos(k * Math.PI / 2 + 0.6) * 120, 55, Math.sin(k * Math.PI / 2 + 0.6) * 120); this.pad.add(lt);
+    }
+    // floodlights on the lightning towers: they matter at night
+    this.flood = new THREE.PointLight(0xdfe8ff, 0, 900, 0);
+    this.flood.position.set(0, 120, 0); this.pad.add(this.flood);
+    this.floodGlow = [];
+    for (let k = 0; k < 4; k++) {
+      const gl = new THREE.Sprite(new THREE.SpriteMaterial({ map: softDot(), color: 0xe8f0ff, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0 }));
+      gl.position.set(Math.cos(k * Math.PI / 2 + 0.6) * 120, 111, Math.sin(k * Math.PI / 2 + 0.6) * 120); gl.scale.setScalar(26);
+      this.pad.add(gl); this.floodGlow.push(gl);
     }
     s.add(this.pad);
     this.clouds = new THREE.Group();
@@ -292,7 +358,14 @@ uniform sampler2D uTex; varying float vA; void main(){
     this.smoke.age.fill(1e9);
     this.orbit.dist = 1;
     this.shownStage = 0;
+    this.plumeLight = new THREE.PointLight(0xff9a3c, 0, 2500, 0);
+    this.plumeLight.position.set(0, -15, 0);
+    this.rocket.group.add(this.plumeLight);
+    this.shake.jolt = 0;
   }
+
+  /** A kick to the camera: ignition, staging, separations. */
+  jolt(k) { this.shake.jolt = Math.max(this.shake.jolt, k); }
 
   /** Update the local scene from the flight simulator. */
   updateLocal(sim, time) {
@@ -314,6 +387,12 @@ uniform sampler2D uTex; varying float vA; void main(){
     this.lStars.material.opacity = Math.max(0, 1 - thick * day * 3);
     this.lSun.position.copy(sun).multiplyScalar(1e5);
     this.lAmb.intensity = 0.25 + 0.8 * thick * day;
+    const dark = 1 - Math.max(0, Math.min(1, up.dot(sun) * 4 + 0.3));     // 1 at night, 0 in daylight
+    this.night = dark;
+    this.lSun.intensity = 3.2 * (1 - 0.92 * dark);
+    this.flood.intensity = 2.2 * dark;
+    this.lAtmo.material.uniforms.uK.value = 0.9 * (0.1 + 0.9 * (1 - dark));   // airglow is faint at night
+    this.floodGlow.forEach((g) => { g.material.opacity = 0.9 * dark; });
     // rocket attitude
     const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), toThree(sim.att).normalize());
     this.rocket.group.quaternion.copy(q);
@@ -333,6 +412,18 @@ uniform sampler2D uTex; varying float vA; void main(){
     const pr = env.atm.p / 101325;
     const engs = sim.engines();
     const stageOn = engs.find((e) => e.kind === 'stage');
+    // the plume lights its own smoke and the pad, which is what a night launch looks like
+    const burning = engs.length > 0 && sim.phase !== 'PAD';
+    const thick2 = Math.max(0, 1 - alt / 40000);
+    this.plumeLight.intensity = burning ? (0.6 + 2.6 * dark) * thick2 * (0.92 + 0.08 * Math.sin(time * 47)) : 0;
+    const amb = 0.14 + 0.72 * (1 - dark);
+    this.smokePts.material.uniforms.uAmb.value.setRGB(0.86 * amb, 0.85 * amb, 0.83 * amb);
+    this.smokePts.material.uniforms.uGlow.value.setRGB(1.0, 0.55, 0.22).multiplyScalar(burning ? 0.25 + 0.75 * dark : 0);
+    // camera shake: ground-reflected acoustics at lift-off, aerodynamic buffet (worst transonic and
+    // at max-Q), and a small structure-borne vibration whenever an engine is burning
+    const acoustic = burning ? Math.exp(-alt / 1500) : 0;
+    const buffet = Math.min(1.6, (env.q / 30000) * (1 + 1.5 * Math.exp(-(((env.mach - 1) / 0.2) ** 2))));
+    this.shake.amp = 0.010 * acoustic + 0.0055 * buffet + (burning ? 0.0011 : 0);
     this.plumes.forEach((p, i) => p.update(i === sim.stage && stageOn ? Math.max(0.15, sim.throttle) : 0, pr, time));
     this.boosterPlumes.forEach((p, k) => {
       const m = R.boosterGroups[k];
@@ -352,17 +443,17 @@ uniform sampler2D uTex; varying float vA; void main(){
         this.smoke.size[i] = (R.stageGroups[0].userData.radius || 2) * (4 + Math.random() * 4) * (1 + alt / 8000);
       }
     }
-    const sp = this.smokePts.geometry.attributes.position, ss = this.smokePts.geometry.attributes.size, sa = this.smokePts.geometry.attributes.alpha;
+    const sp = this.smokePts.geometry.attributes.position, ss = this.smokePts.geometry.attributes.size, sa = this.smokePts.geometry.attributes.alpha, sg2 = this.smokePts.geometry.attributes.age;
     const rx = r[0], ry = r[2], rz = -r[1];
     for (let i = 0; i < this.smokeN; i++) {
       const a = this.smoke.age[i];
       if (a > 90) { sa.array[i] = 0; continue; }
       this.smoke.age[i] += this._dt || 0.016;
       sp.array[3 * i] = this.smoke.pos[3 * i] - rx; sp.array[3 * i + 1] = this.smoke.pos[3 * i + 1] - ry; sp.array[3 * i + 2] = this.smoke.pos[3 * i + 2] - rz;
-      ss.array[i] = this.smoke.size[i] * (1 + a * 0.15);
+      ss.array[i] = this.smoke.size[i] * (1 + a * 0.15); sg2.array[i] = a;
       sa.array[i] = Math.max(0, 0.5 * (1 - a / 90)) * Math.min(1, (60000 - alt) / 40000);
     }
-    sp.needsUpdate = ss.needsUpdate = sa.needsUpdate = true;
+    sp.needsUpdate = ss.needsUpdate = sa.needsUpdate = sg2.needsUpdate = true;
     // pad (Earth-fixed): visible while low
     const padR = sim.padR;
     const c = Math.cos(theta), s = Math.sin(theta);
@@ -396,6 +487,9 @@ uniform sampler2D uTex; varying float vA; void main(){
     if (east.lengthSq() < 1e-6) east.set(1, 0, 0);
     const north = up.clone().cross(east).normalize();
     const cam = this.lCam;
+    const dt = this._dt || 0.016;
+    const shakeK = { onboard: 1, window: 1.15, chase: 0.5, pad: 0.35 }[this.camMode] ?? 0.5;
+    const shakeNow = () => this._shakeCamera(cam, dt, shakeK);
     if (this.camMode === 'pad' && sim.environment(sim.r, sim.v).h < 60000) {
       const padR = sim.padR, th = sim.theta, c = Math.cos(th), s = Math.sin(th);
       const padI = [c * padR[0] - s * padR[1], s * padR[0] + c * padR[1], padR[2]];
@@ -408,9 +502,11 @@ uniform sampler2D uTex; varying float vA; void main(){
       const d = cam.position.length();
       cam.fov = Math.max(1.2, Math.min(55, 2 * Math.atan(L * 2.2 / d) * 180 / Math.PI));
       cam.updateProjectionMatrix();
+      this._shakeCamera(cam, dt, shakeK * Math.min(1, cam.fov / 20));
       return;
     }
-    if (cam.fov !== 55) { cam.fov = 55; cam.updateProjectionMatrix(); }
+    const fov = this.camMode === 'window' ? 68 : 55;
+    if (cam.fov !== fov) { cam.fov = fov; cam.updateProjectionMatrix(); }
     const o = this.orbit;
     const d = L * 1.6 * o.dist;
     const dir = east.clone().multiplyScalar(Math.cos(o.pitch) * Math.cos(o.yaw)).add(north.clone().multiplyScalar(Math.cos(o.pitch) * Math.sin(o.yaw))).add(up.clone().multiplyScalar(Math.sin(o.pitch)));
@@ -420,11 +516,37 @@ uniform sampler2D uTex; varying float vA; void main(){
       cam.position.copy(axis.clone().multiplyScalar(L * 0.9).add(east.clone().multiplyScalar(this.rocket.stageGroups[0].userData.radius * 1.4)));
       cam.up.copy(axis);
       cam.lookAt(axis.clone().multiplyScalar(-L));
+      shakeNow();
+      return;
+    }
+    if (this.camMode === 'window') {
+      // a crew-cabin side window near the top of the stack, looking out toward the horizon;
+      // as the vehicle pitches over, the window turns toward the Earth below
+      const R0 = this.rocket.stageGroups[this.rocket.stageGroups.length - 1].userData.radius || 2;
+      let side = up.clone().multiplyScalar(-1).addScaledVector(axis, axis.dot(up));
+      if (side.lengthSq() < 0.02) side = east.clone().addScaledVector(axis, -axis.dot(east));
+      side.normalize();
+      cam.position.copy(axis.clone().multiplyScalar(L * 0.86).addScaledVector(side, R0 * 1.25));
+      cam.up.copy(axis);
+      cam.lookAt(cam.position.clone().addScaledVector(side, 1000).addScaledVector(axis, 420));
+      shakeNow();
       return;
     }
     cam.position.copy(center.clone().add(dir.multiplyScalar(d)));
     cam.up.copy(up);
     cam.lookAt(center);
+    shakeNow();
+  }
+
+  _shakeCamera(cam, dt, k) {
+    const sh = this.shake;
+    sh.jolt *= Math.exp(-dt * 3.2);
+    const a = (sh.amp + sh.jolt) * k;
+    if (a < 2e-5) return;
+    const t = performance.now() / 1000, n = (f, p) => Math.sin(t * f + p);
+    cam.rotateY(a * (0.55 * n(37.1, 0) + 0.3 * n(23.3, 1.3) + 0.3 * n(5.1, 2.2)));
+    cam.rotateX(a * (0.55 * n(41.7, 0.7) + 0.3 * n(19.9, 2.9) + 0.3 * n(4.3, 0.4)));
+    cam.rotateZ(a * 0.45 * (n(29.3, 1.1) + 0.5 * n(7.7, 0.2)));
   }
 
   /** Globe-view state: Earth rotation, sun, catalog time. */
@@ -432,7 +554,11 @@ uniform sampler2D uTex; varying float vA; void main(){
     const th = gmst(julian(date));
     this.gEarth.rotation.y = th;
     this.gSun.position.copy(toThree(sunDirection(date)).multiplyScalar(100));
-    if (this.cloud) this.cloud.setTime(date.getTime());
+    if (this.cloud) {
+      this.cloud.setTime(date.getTime());
+      const tS = (date.getTime() - this.cloud.baseMs) / 1000;
+      for (const st of this.stations || []) st.mesh.position.copy(toThree(keplerTEME(st.el, tS)));
+    }
   }
 
   /** Shift the globe sideways (title screens) so it doesn't sit behind the menu. */
@@ -443,6 +569,9 @@ uniform sampler2D uTex; varying float vA; void main(){
 
   render(dt) {
     this._dt = dt;
+    const [cam, sun, u] = this.mode === 'globe' ? [this.gCam, this.gSun, this.gSunView] : [this.lCam, this.lSun, this.lSunView];
+    cam.updateMatrixWorld();
+    u.value.copy(sun.position).normalize().transformDirection(cam.matrixWorldInverse);
     if (this.mode === 'globe') { this.controls.update(); this.renderer.render(this.gScene, this.gCam); }
     else this.renderer.render(this.lScene, this.lCam);
   }
