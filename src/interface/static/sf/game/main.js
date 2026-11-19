@@ -714,7 +714,19 @@ function fireFragmentation() {
   const parent = parents.length ? parents[Math.floor(Math.random() * parents.length)].name : 'UNKNOWN OBJECT';
   const tA = G.offset + sim.t + f.afterMin * 60 - 60, tB = G.offset + sim.t + f.afterMin * 60 + 120;
   if (tB > G.offset + p.horizon) return;
-  p.eph = injectThreats(p.eph, path, rng(Date.now() & 0xffff), f.events, { tA, tB, cloudProb: 1, parent, idStart: -1000 });
+  // G.fragPick (recordings): replay the breakup seed that puts a fragment on a RED conjunction
+  const opts = { tA, tB, cloudProb: 1, parent, idStart: -1000 };
+  let seed = Date.now() & 0xffff;
+  if (G.fragPick) {
+    for (let k = 1; k < 1500; k++) {
+      const e2 = injectThreats(p.eph, path, rng(k), f.events, opts);
+      const objs = Array.from({ length: e2.n - p.eph.n }, (_, q) => p.eph.n + q);
+      const res = screen(e2, path, { tMin: G.offset + sim.t, objects: objs });
+      const red = Array.from(res.miss).some((m, q) => res.pc[q] >= 1e-4 && m > 0.08 && m < 0.6);
+      if (red) { seed = k; break; }
+    }
+  }
+  p.eph = injectThreats(p.eph, path, rng(seed), f.events, opts);
   hud.callout('FRAGMENTATION EVENT', `${parent} has broken up. Debris crosses your orbit in ~${f.afterMin} min`, 5000);
   hud.event({ t: sim.t, label: `Fragmentation: ${parent}`, detail: 'new debris cloud on a crossing orbit' }, 'bad');
   audio.alarm(); audio.call('cc_frag', 'Warning. Fragmentation event', { now: true });
