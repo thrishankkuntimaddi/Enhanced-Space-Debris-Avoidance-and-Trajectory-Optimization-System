@@ -11,6 +11,8 @@ import { geodeticToEcef, rotZ, unit, norm, rtnBasis } from '../physics/frames.js
 import { gmst, julian, fmtUTC } from '../physics/time.js';
 import { Path, screen, conjunctions, summarize, riskLevel } from '../physics/collision.js';
 import { DDQNPolicy, planGuarded, counts } from '../ai/sentinel.js';
+import { renderAnalysis, downloadPDF, downloadTelemetry, downloadConjunctions, downloadJSON } from './report.js';
+import { sunDirection } from './scene.js';
 import { G0, MU, RE } from '../physics/constants.js';
 
 const $ = (id) => document.getElementById(id);
@@ -28,6 +30,8 @@ const G = {
   screen: 'title', prev: [], mission: null, cfg: null, plan: null, chosen: { slip: 0, dalt: 0, dv: 0 }, res: null,
   sim: null, warp: 1, paused: false, countdown: null, frame: 0, catalog: null, ops: null, launchArmed: false,
 };
+// ?rec: expose state to the video-capture harness (no effect otherwise)
+if (new URLSearchParams(location.search).has('rec')) window.__sf = { G, views, audio, hud };
 
 function toast(msg, ms = 2600) {
   const t = $('toast'); t.textContent = msg; t.classList.add('show');
@@ -37,6 +41,7 @@ function toast(msg, ms = 2600) {
 // ── navigation ──────────────────────────────────────────────────────────────
 function show(name, push = true) {
   if (push && G.screen !== name) G.prev.push(G.screen);
+  document.body.classList.toggle('crew', name === 'flight' && views.mode === 'local' && views.camMode === 'window');
   document.querySelectorAll('.screen').forEach((s) => s.classList.toggle('active', s.id === 'scr-' + name));
   G.screen = name;
   views.controls.autoRotate = name === 'title' || name === 'campaign';
@@ -345,7 +350,47 @@ $('btn-golaunch').onclick = () => {
 };
 
 // ── flight ──────────────────────────────────────────────────────────────────
-const CAMS = [['chase', 'Chase'], ['pad', 'Tracking'], ['onboard', 'Onboard'], ['map', 'Map']];
+const CAMS = [['chase', 'Chase'], ['pad', 'Tracking'], ['onboard', 'Onboard'], ['window', 'Crew window'], ['map', 'Map']];
+// launch provider -> launch-director voice (tools/callouts.py)
+const PROVIDER = { SpaceX: 'spacex', ISRO: 'isro', 'Rocket Lab': 'rocketlab', ArianeGroup: 'arianespace' };
+const provider = (veh) => PROVIDER[veh.maker] || (veh.country === 'Russia' ? 'roscosmos' : 'spacex');
+const ld = (line) => `ld_${G.provider}_${line}`;
+const LD_TEXT = { t10: 'T minus ten', copy: 'Go for launch', tower: 'Tower cleared', pitch: 'Pitch program', super: 'Supersonic', maxq: 'Max Q',
+  beco: 'Booster engine cutoff', bsep: 'Booster separation', meco: 'Main engine cutoff', ssep: 'Stage separation', ses: 'Upper stage ignition',
+  fairing: 'Fairing separation', guid: 'Closed loop guidance', nominal: 'Telemetry nominal', seco: 'Engine cutoff', circ: 'Circularization burn', lost: 'Vehicle lost' };
+const callLD = (line, opts) => audio.call(ld(line), LD_TEXT[line] || line.replace(/^n/, ''), opts);
+
+// Go/no-go poll before the terminal count, answered from the actual screening result.
+const POLL = [['weather', 'Weather'], ['range', 'Range'], ['prop', 'Propulsion'], ['guid', 'Guidance'], ['health', 'Vehicle health'], ['cola', 'Sentinel COLA']];
+function renderPoll(state) {
+  $('hud-poll').innerHTML = `<div class="ph">GO / NO-GO POLL</div>` + POLL.map(([k, l]) =>
+    `<div class="pr ${state[k] || ''}"><span>${l}</span><b>${state[k] === 'go' ? 'GO' : state[k] === 'nogo' ? 'NO-GO' : state[k] === 'amber' ? 'GO · AMBER' : state[k] === 'ask' ? '…' : ''}</b></div>`).join('');
+}
+async function runPoll(token) {
+  const st = {}, s = G.res?.summary || {};
+  const alive = () => G.pollToken === token;
+  $('hud-poll').classList.remove('hidden'); renderPoll(st);
+  await audio.call('fd_poll', 'Stand by for the go, no-go poll');
+  for (const [k] of POLL) {
+    if (!alive()) return;
+    st[k] = 'ask'; renderPoll(st);
+    await audio.call('fd_' + k, k, { gap: 90 });
+    if (!alive()) return;
+    let ans = `st_${k}_go`;
+    if (k === 'cola') { ans = s.red ? 'st_cola_red' : s.amber ? 'st_cola_amber' : 'st_cola_go'; st[k] = s.red ? 'nogo' : s.amber ? 'amber' : 'go'; } else st[k] = 'go';
+    audio.beep(st[k] === 'nogo' ? 330 : 1320, 0.05);
+    renderPoll(st);
+    await audio.call(ans, st[k] === 'nogo' ? 'No go' : 'Go', { gap: 220 });
+  }
+  if (!alive()) return;
+  if (s.red) await audio.call('fd_red_ack', 'Launch director, your call');
+  else await audio.call('fd_go', 'Flight is go for launch');
+  if (!alive()) return;
+  await callLD('copy');
+  if (!alive()) return;
+  setTimeout(() => $('hud-poll').classList.add('hidden'), 1800);
+  G.poll = false; G.countdown = 10; callLD('t10', { now: true });
+}
 function startFlight() {
   const p = G.plan, c = p.cfg;
   const launch = new Date(c.launchDate.getTime() + G.chosen.slip * 1000);
@@ -358,6 +403,8 @@ function startFlight() {
   G.ops = null; G.avoidDv = 0; G.disposed = false; G.trail = []; G.phasingDone = !G.chosen.dv;
   G.fragDue = G.mission?.fragmentation ? { ...G.mission.fragmentation, fired: false } : null;
   G.warp = 1; G.warpWanted = 1; G.paused = false; G.countdown = 10; G.ended = false;
+  G.provider = provider(c.vehicle); G.calls = new Set(); G.redWarned = new Set();
+  G.poll = true; G.pollToken = (G.pollToken || 0) + 1;
   sim.onEvent = onSimEvent;
   hud.reset(sim, G.mission ? `Mission ${G.mission.n}: ${G.mission.name}` : 'Free flight');
   views.attachVehicle(c.vehicle);
@@ -369,8 +416,13 @@ function startFlight() {
   renderCams();
   show('flight');
   audio.init();
-  audio.say('Ten');
+  audio.setLink('ground');
+  audio.preload(['fd_poll', ...POLL.flatMap(([k]) => ['fd_' + k, `st_${k}_go`]), 'st_cola_red', 'st_cola_amber', 'fd_go', 'fd_red_ack',
+    ...['copy', 't10', 'n9', 'n8', 'n7', 'n6', 'n5', 'n4', 'n3', 'n2', 'n1', 'tower', 'pitch', 'super', 'maxq', 'beco', 'bsep', 'meco', 'ssep', 'ses', 'fairing', 'guid', 'nominal', 'seco', 'circ', 'lost'].map(ld),
+    'liftoff_' + c.vehicle.id, 'cc_orbit', 'cc_conj_red', 'cc_conj_amber', 'cc_burn', 'cc_clear', 'cc_frag', 'cc_payload', 'cc_deorbit', 'cc_collision', 'cc_success', 'cc_sentinel', 'cc_horizon']);
+  runPoll(G.pollToken);
 }
+function syncCrewFrame() { document.body.classList.toggle('crew', G.screen === 'flight' && views.mode === 'local' && views.camMode === 'window'); }
 
 function renderCams() {
   $('hud-cams').innerHTML = CAMS.map(([k, l]) => `<button class="${(views.mode === 'globe' ? 'map' : views.camMode) === k ? 'on' : ''}" data-cam="${k}">${l}</button>`).join('');
@@ -379,6 +431,7 @@ function renderCams() {
 function setCam(k) {
   if (k === 'map') views.mode = views.mode === 'globe' ? 'local' : 'globe';
   else { views.mode = 'local'; views.camMode = k; }
+  syncCrewFrame();
   if (views.mode === 'globe' && G.sim) {
     // look from above the orbit plane, not along it (an orbit seen edge-on is a straight line)
     const r = G.sim.r, v = G.sim.v;
@@ -391,15 +444,22 @@ function setCam(k) {
   renderCams();
 }
 
-const SAY = { liftoff: 'Liftoff', maxq: 'Max Q', booster_sep: 'Booster separation', stage_sep: 'Stage separation', fairing: 'Fairing separation',
-  seco: 'Engine cutoff', circ_start: 'Circularization burn', orbit: 'Orbit insertion confirmed', breakup: 'Vehicle lost', crash: 'Vehicle lost', suborbital: 'Insufficient delta v' };
+// sim event -> launch-director line, camera jolt, thump
+const CALL = { kick: 'pitch', maxq: 'maxq', beco: 'beco', booster_sep: 'bsep', meco: 'meco', stage_sep: 'ssep', fairing: 'fairing', guidance: 'guid',
+  seco: 'seco', circ_start: 'circ', breakup: 'lost', crash: 'lost', suborbital: 'lost', overload: 'lost' };
+const JOLT = { liftoff: 0.02, booster_sep: 0.016, stage_sep: 0.024, meco: 0.008, fairing: 0.008, airlit: 0.01, breakup: 0.05 };
 function onSimEvent(e) {
   const bad = ['breakup', 'crash', 'suborbital', 'overload', 'collision'].includes(e.key);
   hud.event(e, bad ? 'bad' : e.key === 'orbit' ? 'good' : '');
   if (['liftoff', 'maxq', 'booster_sep', 'stage_sep', 'fairing', 'seco', 'circ_start', 'orbit', 'breakup', 'crash', 'suborbital', 'overload'].includes(e.key)) {
     hud.callout(e.label.toUpperCase(), e.detail);
-    if (SAY[e.key]) audio.say(SAY[e.key]);
   }
+  if (JOLT[e.key]) { views.jolt(JOLT[e.key]); audio.thump(JOLT[e.key] * 40); }
+  if (e.key === 'liftoff') audio.call('liftoff_' + G.sim.veh.id, 'Liftoff', { now: true });
+  else if (e.key === 'orbit') { audio.setLink('radio'); audio.call('cc_orbit', 'Orbit insertion confirmed'); }
+  else if (e.key === 'collision') audio.call('cc_collision', 'Collision', { now: true });
+  else if (CALL[e.key] && !G.calls.has(e.key)) { G.calls.add(e.key); callLD(CALL[e.key], bad ? { now: true } : undefined); }
+  if (e.key === 'stage_sep') G.awaitSES = G.sim.stage;
   if (e.key === 'orbit') setTimeout(enterOrbitOps, 600);
   if (bad) { G.warpWanted = 1; setTimeout(() => finishMission(), 4500); }
 }
@@ -413,12 +473,12 @@ addEventListener('keydown', (e) => {
   switch (e.key.toLowerCase()) {
     case ' ':
       e.preventDefault();
-      if (sim.phase === 'PAD') { G.countdown = 0; break; }
+      if (sim.phase === 'PAD') { G.pollToken++; G.poll = false; $('hud-poll').classList.add('hidden'); G.countdown = 0; break; }
       if (sim.stageNow()) { /* event already logged */ } break;
     case '.': case '>': G.warp = nextWarp(1); break;
     case ',': case '<': G.warp = nextWarp(-1); break;
     case 'escape': G.warpWanted = 1; G.warp = 1; break;
-    case 'c': { const order = ['chase', 'pad', 'onboard']; setCam(order[(order.indexOf(views.camMode) + 1) % 3]); break; }
+    case 'c': { const order = ['chase', 'pad', 'onboard', 'window']; setCam(order[(order.indexOf(views.camMode) + 1) % order.length]); break; }
     case 'm': setCam('map'); break;
     case 'p': G.paused = !G.paused; toast(G.paused ? 'Paused' : 'Resumed', 1000); break;
     case 'n': toast(audio.toggle() ? 'Sound off' : 'Sound on', 1000); break;
@@ -620,13 +680,14 @@ $('btn-mv-ai').onclick = async () => {
   const full = evalBurn(best.burn);   // verification against the whole catalog
   $('mv-lead').value = best.leadMin; $('mv-pro').value = best.burn.dv[1]; $('mv-rad').value = best.burn.dv[0]; $('mv-nor').value = best.burn.dv[2];
   previewBurn();
+  if (!full.sum.red) audio.call('cc_sentinel', 'Sentinel has a burn solution');
   toast(full.sum.red ? 'Sentinel: no burn in range clears every RED. This is the best risk reduction.' : `Sentinel: ${best.mag} m/s ${['radial', 'prograde', 'normal'][best.dir.findIndex((x) => x)]}${best.dir.some((x) => x < 0) ? ' (negative)' : ''}, ${best.leadMin} min before TCA. Verified.`, 4200);
 };
 
 $('btn-dispose').onclick = () => {
   const sim = G.sim;
   if (G.disposed) return;
-  if (sim.payloadAttached) { sim.payloadAttached = false; hud.event({ t: sim.t, label: 'Payload separation', detail: `${fmt(sim.payload)} kg delivered` }, 'good'); audio.say('Payload separation'); }
+  if (sim.payloadAttached) { sim.payloadAttached = false; hud.event({ t: sim.t, label: 'Payload separation', detail: `${fmt(sim.payload)} kg delivered` }, 'good'); audio.call('cc_payload', 'Payload separation'); }
   const el = elements(sim.r, sim.v), r = norm(sim.r), rp = RE + 90e3;
   const need = circularSpeed(r) - Math.sqrt(MU * (2 / r - 2 / (r + rp)));
   if (sim.deltaVLeft(true) >= need && sim.prop[sim.stage] > 0) {
@@ -635,7 +696,7 @@ $('btn-dispose').onclick = () => {
     G.disposed = true;
     hud.event({ t: sim.t, label: 'De-orbit burn', detail: `−${need.toFixed(0)} m/s, perigee ${(e2.periAlt / 1000).toFixed(0)} km: the stage re-enters within one orbit` }, 'good');
     hud.callout('STAGE DISPOSED', 'controlled re-entry, nothing left behind');
-    audio.say('Deorbit burn complete');
+    audio.call('cc_deorbit', 'Deorbit burn complete');
   } else {
     hud.event({ t: sim.t, label: 'Cannot de-orbit', detail: `needs ${need.toFixed(0)} m/s, only ${sim.deltaVLeft().toFixed(0)} m/s left: stage stays in a ${(el.periAlt / 1000).toFixed(0)} km orbit` }, 'bad');
     G.disposed = false;
@@ -653,10 +714,22 @@ function fireFragmentation() {
   const parent = parents.length ? parents[Math.floor(Math.random() * parents.length)].name : 'UNKNOWN OBJECT';
   const tA = G.offset + sim.t + f.afterMin * 60 - 60, tB = G.offset + sim.t + f.afterMin * 60 + 120;
   if (tB > G.offset + p.horizon) return;
-  p.eph = injectThreats(p.eph, path, rng(Date.now() & 0xffff), f.events, { tA, tB, cloudProb: 1, parent, idStart: -1000 });
+  // G.fragPick (recordings): replay the breakup seed that puts a fragment on a RED conjunction
+  const opts = { tA, tB, cloudProb: 1, parent, idStart: -1000 };
+  let seed = Date.now() & 0xffff;
+  if (G.fragPick) {
+    for (let k = 1; k < 1500; k++) {
+      const e2 = injectThreats(p.eph, path, rng(k), f.events, opts);
+      const objs = Array.from({ length: e2.n - p.eph.n }, (_, q) => p.eph.n + q);
+      const res = screen(e2, path, { tMin: G.offset + sim.t, objects: objs });
+      const red = Array.from(res.miss).some((m, q) => res.pc[q] >= 1e-4 && m > 0.08 && m < 0.6);
+      if (red) { seed = k; break; }
+    }
+  }
+  p.eph = injectThreats(p.eph, path, rng(seed), f.events, opts);
   hud.callout('FRAGMENTATION EVENT', `${parent} has broken up. Debris crosses your orbit in ~${f.afterMin} min`, 5000);
   hud.event({ t: sim.t, label: `Fragmentation: ${parent}`, detail: 'new debris cloud on a crossing orbit' }, 'bad');
-  audio.say('Warning. Fragmentation event detected');
+  audio.alarm(); audio.call('cc_frag', 'Warning. Fragmentation event', { now: true });
   G.warpWanted = Math.min(G.warpWanted, 10);
   opsRescreen();
 }
@@ -672,6 +745,10 @@ function trackApproaches() {
     if (c.risk === 'GREEN') continue;
     const dt = c.tca - now;
     if (dt < 120 && dt > -2) near = c;
+    if (dt < 240 && dt > 0 && G.ops && !G.redWarned.has(c.i)) {
+      G.redWarned.add(c.i);
+      if (c.risk === 'RED') { audio.alarm(); audio.call('cc_conj_red', 'Conjunction warning. Red'); } else audio.call('cc_conj_amber', 'Amber conjunction ahead');
+    }
     if (dt <= -1) {
       G.resolved.add(c.i);
       const hit = Math.random() < c.pc;
@@ -679,7 +756,10 @@ function trackApproaches() {
       if (hit) {
         G.collision = c.name;
         sim.fail('collision', 'Collision', `with ${c.name} at ${fmt(c.relSpeed, 1)} km/s (Pc was ${pcFmt(c.pc)})`);
-      } else hud.event({ t: sim.t, label: `Close approach: ${c.name}`, detail: `${fmt(c.miss, 2)} km, Pc ${pcFmt(c.pc)}` }, c.risk === 'RED' ? 'bad' : '');
+      } else {
+        hud.event({ t: sim.t, label: `Close approach: ${c.name}`, detail: `${fmt(c.miss, 2)} km, Pc ${pcFmt(c.pc)}` }, c.risk === 'RED' ? 'bad' : '');
+        if (c.risk === 'RED') audio.call('cc_clear', 'Close approach passed');
+      }
     }
   }
   G.closeApproach = !!near;
@@ -727,6 +807,30 @@ function finishMission() {
     g.fillStyle = col; g.fillRect(x, 150 - h, w, h);
     g.fillStyle = '#8696ad'; g.font = '11px JetBrains Mono'; g.fillText(k, x, 166); g.fillText(fmt(v), x, 145 - h);
   });
+  // analysis + downloads
+  const sunE = sunDirection(sim.T0), padI = unit(rotZ(sim.padR, sim.theta0));
+  const sunEl = Math.asin(padI[0] * sunE[0] + padI[1] * sunE[1] + padI[2] * sunE[2]) * 180 / Math.PI;
+  const R = G.report = {
+    generated: new Date().toISOString(), mission: m ? `Mission ${m.n}: ${m.name}` : null, vehicle: c.vehicle.name, site: c.site.name,
+    launchUTC: sim.T0.toISOString(), slip: G.chosen.slip, dalt: G.chosen.dalt, phasingDv: G.chosen.dv, payloadKg: c.payloadKg,
+    target: { alt: c.targetAltKm, inc: c.targetIncDeg }, kickDeg: sim.cfg.kickDeg,
+    daylight: sunEl > 0 ? `day (sun ${sunEl.toFixed(0)} deg up)` : sunEl > -12 ? `twilight (sun ${sunEl.toFixed(0)} deg)` : `night (sun ${sunEl.toFixed(0)} deg)`,
+    insertion: el ? { t: sim.insertion.t, apo: el.apoAlt / 1000, peri: el.periAlt / 1000, inc: el.incDeg, ecc: el.e } : null,
+    maxQ: sim.maxQ, maxQAt: sim.maxQAt, maxG: sim.maxG, losses: { ...L }, avoidDv: G.avoidDv, disposed: G.disposed,
+    verdict: sc.verdict, stars: sc.stars, score: sc.total, scoreRows: sc.rows,
+    catalog: { ...(G.catalog?.meta || {}), rows: undefined },
+    window: (G.plan.blackoutData || []).map((d) => ({ slip: d.slip, minMiss: d.minMiss, red: !!d.red, amber: !!d.amber })),
+    conjunctions: (G.conjRows || []).map((q) => ({ risk: q.risk, id: q.id, name: q.name, type: q.type, miss: q.miss, radial: q.radial, along: q.along, cross: q.cross,
+      relSpeed: q.relSpeed, pc: q.pc, tcaUTC: new Date(G.plan.eph.epochMs + q.tca * 1000).toISOString() })),
+    passes: G.passes, events: sim.events.map((e) => ({ t: e.t, key: e.key, label: e.label, detail: e.detail })), telemetry: sim.telemetry,
+  };
+  renderAnalysis($('deb-analysis'), R);
+  const busy = (b, fn) => async () => { b.disabled = true; try { await fn(R); } catch (e) { toast(e.message, 4000); } b.disabled = false; };
+  $('dl-pdf').onclick = busy($('dl-pdf'), downloadPDF);
+  $('dl-tel').onclick = () => downloadTelemetry(R);
+  $('dl-conj').onclick = () => downloadConjunctions(R);
+  $('dl-json').onclick = () => downloadJSON(R);
+  if (orbit && sc.stars && !G.collision) setTimeout(() => audio.call('cc_success', 'Mission success'), 700);
   const idx = m ? MISSIONS.indexOf(m) : -1;
   $('btn-next').querySelector('b').textContent = m && idx < MISSIONS.length - 1 && sc.stars ? 'Next mission' : 'Campaign';
   $('btn-next').onclick = () => { if (m && idx < MISSIONS.length - 1 && sc.stars) openHangar(MISSIONS[idx + 1]); else show('campaign'); };
@@ -754,13 +858,13 @@ function stepFlight(dt) {
   if (G.paused) return;
   if (sim.phase === 'PAD') {
     const before = Math.ceil(G.countdown);
-    G.countdown -= dt;
+    if (!G.poll) G.countdown -= dt;
     const after = Math.ceil(G.countdown);
-    if (after !== before && after > 0 && after <= 9) { audio.say(String(after)); audio.beep(660); }
+    if (after !== before && after > 0 && after <= 9) { callLD('n' + after, { now: true }); audio.beep(660, 0.04); }
     $('hud-tminus').textContent = 'T−';
     $('hud-clock').textContent = clock(Math.max(0, G.countdown));
-    $('hud-phase').textContent = 'TERMINAL COUNT';
-    if (G.countdown <= 0) { sim.liftoff(); $('hud-tminus').textContent = 'T+'; }
+    $('hud-phase').textContent = G.poll ? 'HOLD · GO/NO-GO POLL' : 'TERMINAL COUNT';
+    if (G.countdown <= 0) { sim.liftoff(); $('hud-tminus').textContent = 'T+'; $('hud-poll').classList.add('hidden'); }
     sim._telemetry(sim.environment(sim.r, sim.v), 0, sim.att, sim.mass());
   } else {
     applySteeringKeys(sim, dt);
@@ -777,21 +881,26 @@ function stepFlight(dt) {
       G.avoidDv += got;
       hud.event({ t: sim.t, label: 'Avoidance burn', detail: `${got.toFixed(2)} m/s (R ${b.dv[0]}, T ${b.dv[1]}, N ${b.dv[2]})` }, 'good');
       hud.callout('AVOIDANCE BURN', `${got.toFixed(2)} m/s`);
-      audio.say('Avoidance burn');
+      audio.call('cc_burn', 'Avoidance burn', { now: true }); views.jolt(0.006); audio.thump(0.4);
       G.ops.burn = null;
       opsRescreen();
     }
     if (G.fragDue && !G.fragDue.fired && G.ops && sim.t > sim.insertion.t + 90) fireFragmentation();
     if (sim.phase !== 'FAILED') trackApproaches();
     if (G.ops && G.frame % 30 === 0) renderOps();
-    if (G.ops && sim.t >= G.plan.horizon && !G.horizonWarned) { G.horizonWarned = true; G.warpWanted = 1; toast('End of the screening horizon: deploy the payload, dispose of the stage, then end the mission.', 6000); }
+    if (G.ops && sim.t >= G.plan.horizon && !G.horizonWarned) { G.horizonWarned = true; G.warpWanted = 1; toast('End of the screening horizon: deploy the payload, dispose of the stage, then end the mission.', 6000); audio.call('cc_horizon', 'End of the screening horizon'); }
     $('hud-tminus').textContent = 'T+';
     $('hud-clock').textContent = clock(sim.t);
     $('hud-phase').textContent = sim.phase === 'ORBIT' ? 'ORBIT OPERATIONS' : sim.phase === 'FAILED' ? (sim.failure?.label || 'FAILED').toUpperCase() : sim.mode.replace(/_/g, ' ');
     if (G.frame % 20 === 0) G.trail.push(sim.r.slice());
     const env = sim.environment(sim.r, sim.v);
     const thrust = sim.thrustAt(sim.engines(), env.atm.p);
-    audio.update(thrust, env.atm.p / 101325, G.warp);
+    audio.update(thrust, env.atm.p / 101325, G.warp, env.h);
+    // derived ascent calls
+    if (!G.calls.has('tower') && env.h > 160 && sim.t > 2) { G.calls.add('tower'); callLD('tower'); }
+    if (!G.calls.has('super') && env.mach >= 1) { G.calls.add('super'); callLD('super'); }
+    if (!G.calls.has('nominal') && sim.t > 150 && sim.phase !== 'FAILED' && !G.ops) { G.calls.add('nominal'); callLD('nominal'); }
+    if (G.awaitSES != null && sim.stage === G.awaitSES && thrust > 0) { G.awaitSES = null; callLD('ses'); views.jolt(0.012); audio.thump(0.5); }
   }
   hud.update(sim, G.warp, G.frame, G.warpWanted);
   if (views.mode === 'local') views.updateLocal(sim, performance.now() / 1000);

@@ -30,6 +30,7 @@
       <button class="btn primary" data-go="campaign"><b>Campaign</b><small>Six missions, real vehicles, real catalog</small></button>
       <button class="btn" data-go="free"><b>Free flight</b><small>Any rocket, any orbit, any time in the data window</small></button>
       <button class="btn" data-go="manual"><b>Flight manual</b><small>Controls, physics and scoring</small></button>
+      <a class="btn" href="/science"><b>Science &amp; equations</b><small>Every model in the game, with downloadable PDF</small></a>
       <a class="btn ghost" href="/planner"><b>Classic planner</b><small>Server-side screening + guarded DDQN</small></a>
       <a class="btn ghost" href="/evidence"><b>Evidence</b><small>Data quality, back-test, AI evaluation</small></a>
     </div>
@@ -130,6 +131,8 @@
   <div class="hud-attitude panel glass"><canvas id="att" width="150" height="150"></canvas></div>
   <div class="hud-events" id="hud-events"></div>
   <div class="hud-callout" id="hud-callout"></div>
+  <div class="hud-poll panel glass hidden" id="hud-poll"></div>
+  <div class="crew-frame" aria-hidden="true"><div class="crew-glass"></div><div class="crew-tag">CREW WINDOW · simulated view</div></div>
   <div class="hud-bottom">
     <div class="keys" id="hud-keys"></div>
     <div class="cams" id="hud-cams"></div>
@@ -162,6 +165,16 @@
       <div><h3>Score</h3><table id="deb-score"></table></div>
       <div><h3>Flight</h3><table id="deb-flight"></table></div>
       <div><h3>Δv budget</h3><canvas id="deb-dv" width="360" height="180"></canvas><table id="deb-loss"></table></div>
+    </div>
+    <h3 class="an-head">Flight analysis</h3>
+    <div class="analysis" id="deb-analysis"></div>
+    <div class="downloads">
+      <span class="dl-label">Download</span>
+      <button class="dl" id="dl-pdf"><b>Mission report</b><small>PDF · charts, tables, models</small></button>
+      <button class="dl" id="dl-tel"><b>Telemetry</b><small>CSV · every 0.5 s</small></button>
+      <button class="dl" id="dl-conj"><b>Conjunctions</b><small>CSV · screening + launch window</small></button>
+      <button class="dl" id="dl-json"><b>Everything</b><small>JSON</small></button>
+      <a class="dl" href="/static/docs/sentinelflight_equations.pdf" download><b>Equations</b><small>PDF · all models</small></a>
     </div>
     <div class="row2"><button class="btn" data-go="hangar"><b>Fly again</b></button><button class="btn primary" id="btn-next"><b>Continue</b></button></div>
   </div>

@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SentinelFlight Science</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Cpath d=%22M16 2 L21 18 L16 15 L11 18 Z%22 fill=%22%2338e1ff%22/%3E%3Ccircle cx=%2216%22 cy=%2224%22 r=%225%22 fill=%22none%22 stroke=%22%23ffb547%22 stroke-width=%222%22/%3E%3C/svg%3E">
+  <meta name="description" content="Every equation and model behind SentinelFlight: rocket physics, the atmosphere, orbits, SGP4, conjunction screening, collision probability and the Double DQN collision-avoidance agent, with honest limits.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+    onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'\\(',right:'\\)',display:false}]});document.body.classList.add('math-ready')"></script>
+  <style>
+    :root { --bg: #05070c; --panel: #0b0f18; --line: rgba(255,255,255,.08); --text: #e9edf4; --muted: #8b94a6; --red: #ff3b4e; --red2: #ff6b3d; --amber: #ffb547; --green: #3ee38c; --cyan: #38e1ff;
+      --mono: 'JetBrains Mono', ui-monospace, monospace; --ui: 'Space Grotesk', system-ui, sans-serif; --disp: 'Orbitron', var(--ui); }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.62 var(--ui); }
+    a { color: var(--red); }
+    .top { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 16px; padding: 12px 20px; background: rgba(5,7,12,.86); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
+    .top .logo { font: 800 15px var(--disp); letter-spacing: .14em; color: #fff; text-decoration: none; }
+    .top .logo span { color: var(--red); }
+    .top .sp { flex: 1; }
+    .pill { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 999px; border: 1px solid rgba(255,59,78,.5); color: #fff; text-decoration: none; font-weight: 600; font-size: 14px; background: rgba(255,59,78,.1); }
+    .pill:hover { background: rgba(255,59,78,.22); }
+    .pill.ghost { border-color: var(--line); background: none; color: var(--muted); }
+    .hero { max-width: 1060px; margin: 0 auto; padding: 72px 20px 36px; }
+    .kicker { font: 600 12px var(--mono); letter-spacing: .22em; color: var(--red); text-transform: uppercase; }
+    h1 { font: 800 clamp(32px, 6vw, 58px)/1.05 var(--disp); letter-spacing: .02em; margin: 14px 0 18px; }
+    h1 em { font-style: normal; color: var(--red); }
+    .lead { font-size: 19px; color: #c6ccd8; max-width: 760px; }
+    .cta { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 26px; }
+    .wrap { max-width: 1060px; margin: 0 auto; padding: 0 20px 80px; display: grid; grid-template-columns: 220px 1fr; gap: 40px; }
+    nav.toc { position: sticky; top: 76px; align-self: start; font-size: 13.5px; }
+    nav.toc a { display: block; color: var(--muted); text-decoration: none; padding: 5px 0 5px 12px; border-left: 2px solid var(--line); }
+    nav.toc a:hover { color: #fff; border-color: var(--red); }
+    section.sec { padding-top: 34px; }
+    h2 { font: 700 26px var(--ui); margin: 0 0 6px; display: flex; align-items: baseline; gap: 12px; }
+    h2 .n { font: 600 13px var(--mono); color: var(--red); }
+    .sub { color: var(--muted); margin: 0 0 18px; }
+    .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 20px 22px; margin: 14px 0; }
+    .card h3 { margin: 0 0 4px; font-size: 17px; }
+    .card p { margin: 8px 0; color: #cdd3de; }
+    .eq { overflow-x: auto; overflow-y: hidden; padding: 4px 0; }
+    .meta { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 10px; font: 12.5px var(--mono); color: var(--muted); }
+    .meta b { color: #c6ccd8; font-weight: 600; }
+    .meta .lim { color: var(--amber); }
+    .plain { border-left: 3px solid var(--red); padding-left: 12px; }
+    table { border-collapse: collapse; width: 100%; font-size: 14px; }
+    th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); }
+    th { color: var(--muted); font-weight: 600; font-size: 12.5px; text-transform: uppercase; letter-spacing: .06em; }
+    td.num { font-family: var(--mono); text-align: right; }
+    tr.hl td { color: #fff; font-weight: 600; background: rgba(255,59,78,.08); }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .limits li { margin: 6px 0; color: #cdd3de; }
+    .collab { margin-top: 40px; padding: 28px; border-radius: 18px; background: linear-gradient(135deg, rgba(255,59,78,.18), rgba(255,107,61,.06)); border: 1px solid rgba(255,59,78,.4); }
+    .collab h2 { font-family: var(--disp); font-size: 22px; letter-spacing: .04em; }
+    footer { text-align: center; color: var(--muted); font-size: 13px; padding: 30px 20px 50px; border-top: 1px solid var(--line); }
+    .katex { font-size: 1.08em; }
+    @media (max-width: 860px) { .wrap { grid-template-columns: 1fr; } nav.toc { display: none; } .grid2 { grid-template-columns: 1fr; } }
+    /* print: the downloadable PDF */
+    @media print {
+      @page { size: A4; margin: 14mm 13mm; }
+      :root { --bg: #fff; --panel: #fff; --line: #dde1e8; --text: #10141c; --muted: #5b6577; }
+      body { font-size: 11pt; }
+      .top, nav.toc, .cta, .noprint { display: none !important; }
+      .hero { padding: 0 0 12px; } h1 { font-size: 28pt; } .lead { color: #333; font-size: 12pt; }
+      .wrap { display: block; padding: 0; }
+      .card { break-inside: avoid; border-color: #dde1e8; padding: 12px 14px; }
+      .card p, .limits li { color: #222; } .meta b { color: #222; }
+      section.sec { break-before: auto; padding-top: 14px; }
+      .collab { background: #fff3f4; }
+      tr.hl td { background: #fff1f2; color: #000; }
+      a { color: #c4122a; text-decoration: none; }
+    }
+  </style>
+</head>
+<body>
+<header class="top">
+  <a class="logo" href="/">SENTINEL<span>FLIGHT</span></a>
+  <div class="sp"></div>
+  <a class="pill ghost" href="/">← Play</a>
+  <a class="pill" href="/static/docs/sentinelflight_equations.pdf" download>⬇ Equations PDF</a>
+</header>
+
+<div class="hero">
+  <div class="kicker">The science inside the game</div>
+  <h1>Every launch obeys <em>real physics</em>. Here are the equations.</h1>
+  <p class="lead">SentinelFlight flies a real rocket through the real sky: the public catalog of more than 20,000 satellites and pieces of debris. Each section below says what a model means in plain words, gives the equation exactly as the code uses it, names the file it lives in, and states where it stops being true.</p>
+  <div class="cta">
+    <a class="pill" href="/static/docs/sentinelflight_equations.pdf" download>⬇ Download all equations (PDF)</a>
+    <a class="pill ghost" href="/">Fly a mission, then download its report</a>
+    <a class="pill ghost" href="/evidence">Evidence: back-test and AI evaluation</a>
+  </div>
+</div>
+
+<div class="wrap">
+<nav class="toc">
+  <a href="#launch">1 · Getting off the ground</a>
+  <a href="#air">2 · Air: atmosphere and drag</a>
+  <a href="#gravity">3 · Gravity and Earth's shape</a>
+  <a href="#fly">4 · Flying the ascent</a>
+  <a href="#losses">5 · Where the Δv goes</a>
+  <a href="#orbit">6 · Orbits</a>
+  <a href="#catalog">7 · The catalog and SGP4</a>
+  <a href="#screen">8 · Finding close approaches</a>
+  <a href="#pc">9 · Probability of collision</a>
+  <a href="#dodge">10 · Dodging in orbit</a>
+  <a href="#ai">11 · The Sentinel AI</a>
+  <a href="#limits">12 · Honest limits</a>
+  <a href="#collab">Collaborate</a>
+</nav>
+
+<main>
+<!-- 1 -->
+<section class="sec" id="launch">
+  <h2><span class="n">01</span>Getting off the ground</h2>
+  <p class="sub">How much a rocket can change its speed, and whether it can lift itself at all.</p>
+  <div class="card">
+    <h3>Tsiolkovsky rocket equation</h3>
+    <p class="plain">Throwing mass out of the back makes you go faster. Burning a lot of fuel buys surprisingly little: the speed only grows with the <i>logarithm</i> of the mass ratio. That is why rockets have stages.</p>
+    <div class="eq">$$\Delta v = I_{sp}\, g_0 \ln\frac{m_0}{m_f}, \qquad \Delta v_{\text{total}} = \sum_{k\,\in\,\text{stages}} I_{sp,k}\, g_0 \ln\frac{m_{0,k}}{m_{f,k}}$$</div>
+    <div class="meta"><span><b>Used for</b> the Δv budget in mission setup</span><span><b>Code</b> physics/vehicles.js · deltaVBudget</span><span class="lim">Ideal number: real flights lose 1.3–1.7 km/s of it (section 5)</span></div>
+  </div>
+  <div class="card">
+    <h3>Thrust, back-pressure and mass flow</h3>
+    <p class="plain">An engine pushes harder in vacuum than at sea level, because air pressing on the nozzle exit pushes back. The engine burns propellant at a steady rate set by its vacuum efficiency.</p>
+    <div class="eq">$$F(h) = F_{vac} - \left(F_{vac} - F_{sl}\right)\frac{p(h)}{p_0}, \qquad \dot m = \frac{F_{vac}}{I_{sp,vac}\, g_0}, \qquad \text{TWR} = \frac{F_{sl}}{m_0\, g_0}$$</div>
+    <div class="meta"><span><b>Code</b> physics/flight.js · thrustAt, engines</span><span><b>Lift-off</b> needs TWR &gt; 1 (setup screen shows it)</span></div>
+  </div>
+  <div class="card">
+    <h3>Launch azimuth on a rotating Earth</h3>
+    <p class="plain">To reach an orbit tilted by \(i\) from a site at latitude \(\varphi\) you must head off at azimuth \(\beta\). The Earth's spin already gives you up to 465 m/s eastward, so the heading you actually fly is bent slightly to use it.</p>
+    <div class="eq">$$\sin\beta = \frac{\cos i}{\cos\varphi}, \qquad \beta_{rot} = \operatorname{atan2}\!\left(v_{orb}\sin\beta - \omega_E\, r\cos\varphi,\; v_{orb}\cos\beta\right)$$</div>
+    <div class="meta"><span><b>Code</b> physics/flight.js · launchAzimuth</span><span class="lim">No real solution when \(i &lt; |\varphi|\): you cannot launch directly into an orbit less inclined than your latitude</span></div>
+  </div>
+</section>
+
+<!-- 2 -->
+<section class="sec" id="air">
+  <h2><span class="n">02</span>Air: atmosphere and drag</h2>
+  <p class="sub">The first 100 km are the hardest: air pushes back, heats up and tries to bend the rocket.</p>
+  <div class="card">
+    <h3>U.S. Standard Atmosphere 1976</h3>
+    <p class="plain">Temperature changes linearly inside each layer of the atmosphere. Pressure then follows from balancing the weight of the air above, and density from the ideal-gas law. Above 86 km the published density table is interpolated.</p>
+    <div class="eq">$$T = T_b + L\,(H - H_b), \qquad p = \begin{cases} p_b\left(\dfrac{T_b}{T}\right)^{g_0 / (R L)} & L \ne 0 \\[6pt] p_b\, \exp\!\left(-\dfrac{g_0 (H - H_b)}{R\, T_b}\right) & L = 0 \end{cases}, \qquad \rho = \frac{p}{R\,T}, \qquad a = \sqrt{\gamma R T}$$</div>
+    <div class="meta"><span><b>Geopotential height</b> \(H = R_0 h/(R_0 + h)\), \(R_0 = 6\,356\,766\) m</span><span><b>Code</b> physics/atmosphere.js</span><span class="lim">A standard day: no weather, winds or solar activity</span></div>
+  </div>
+  <div class="card">
+    <h3>Drag, dynamic pressure and Mach number</h3>
+    <p class="plain">Drag grows with the square of speed and with air density. Their product, the <i>dynamic pressure</i> \(q\), peaks about a minute after lift-off: that moment is <b>Max-Q</b>. Drag is computed against the air, which rotates with the Earth.</p>
+    <div class="eq">$$\vec v_{rel} = \vec v - \vec\omega_E \times \vec r, \qquad q = \tfrac12 \rho\, v_{rel}^2, \qquad \vec a_D = -\frac{q\, C_D(M)\, A}{m}\,\hat v_{rel}, \qquad M = \frac{v_{rel}}{a}$$</div>
+    <p>\(C_D\) follows a rocket-like Mach curve: 0.30 subsonic, rising to 0.64 just past Mach 1 (the transonic drag rise), then decaying to 0.28 at Mach 8.</p>
+    <div class="meta"><span><b>Code</b> physics/atmosphere.js · dragCoefficient; flight.js · environment</span><span><b>Structural limit</b> \(q\cdot\alpha \le 160\,000\) Pa·deg, break-up at 1.3 × design Max-Q</span></div>
+  </div>
+</section>
+
+<!-- 3 -->
+<section class="sec" id="gravity">
+  <h2><span class="n">03</span>Gravity and Earth's shape</h2>
+  <p class="sub">Earth is not a perfect sphere. Its equatorial bulge slowly twists every orbit.</p>
+  <div class="card">
+    <h3>Gravity with the J2 term</h3>
+    <p class="plain">Point-mass gravity plus the largest correction for Earth's flattening (\(J_2\)). The game integrates this in the inertial TEME frame.</p>
+    <div class="eq">$$\vec a_g = -\frac{\mu}{r^3}\begin{pmatrix} x\left[1 + \tfrac32 J_2 \tfrac{R_E^2}{r^2}\left(1 - 5\tfrac{z^2}{r^2}\right)\right] \\ y\left[1 + \tfrac32 J_2 \tfrac{R_E^2}{r^2}\left(1 - 5\tfrac{z^2}{r^2}\right)\right] \\ z\left[1 + \tfrac32 J_2 \tfrac{R_E^2}{r^2}\left(3 - 5\tfrac{z^2}{r^2}\right)\right]\end{pmatrix}$$</div>
+    <div class="meta"><span>\(\mu = 3.986\,004\,418\times10^{14}\) m³/s²</span><span>\(J_2 = 1.082\,626\,68\times10^{-3}\)</span><span>\(R_E = 6\,378\,137\) m</span><span><b>Code</b> physics/orbit.js · gravity</span></div>
+  </div>
+  <div class="card">
+    <h3>Numerical integration: RK4</h3>
+    <p class="plain">The rocket's motion is stepped forward with the classical 4th-order Runge–Kutta method. Steps are cut exactly at engine burnout so no stage burns a fraction of a step too long.</p>
+    <div class="eq">$$\vec y_{n+1} = \vec y_n + \frac{\Delta t}{6}\left(\vec k_1 + 2\vec k_2 + 2\vec k_3 + \vec k_4\right), \quad \vec k_1 = f(t_n, \vec y_n),\; \vec k_2 = f\!\left(t_n + \tfrac{\Delta t}{2}, \vec y_n + \tfrac{\Delta t}{2}\vec k_1\right), \dots$$</div>
+    <div class="meta"><span><b>Code</b> physics/flight.js · advance; orbit.js · rk4Coast</span><span><b>Tested</b> tests/js/physics.test.mjs</span></div>
+  </div>
+</section>
+
+<!-- 4 -->
+<section class="sec" id="fly">
+  <h2><span class="n">04</span>Flying the ascent</h2>
+  <p class="sub">Rise vertically, tip over a few degrees, then let gravity do the turning.</p>
+  <div class="card">
+    <h3>Pitch kick and gravity turn</h3>
+    <p class="plain">After a small kick toward the launch azimuth, the rocket keeps its nose pointed along its velocity (zero angle of attack) so the air never pushes it sideways. Gravity then bends the path toward horizontal on its own.</p>
+    <div class="eq">$$\dot\gamma = -\left(\frac{g}{v} - \frac{v}{r}\right)\cos\gamma, \qquad \alpha \approx 0 \text{ while } q \text{ is large}$$</div>
+    <div class="meta"><span><b>Flight computer</b> searches the kick angle with full ascent simulations before every launch</span><span><b>Code</b> physics/flight.js · KICK, GRAVITY_TURN</span></div>
+  </div>
+  <div class="card">
+    <h3>Closed-loop guidance and circularisation</h3>
+    <p class="plain">Out of the air, guidance steers into a 200 km × target transfer orbit, coasts to apoapsis, then fires a circularisation burn. The cutoff speed comes from the vis-viva equation.</p>
+    <div class="eq">$$v^2 = \mu\left(\frac{2}{r} - \frac{1}{a}\right), \qquad v_{\text{cutoff}} = \sqrt{\mu\left(\frac{2}{r} - \frac{2}{r + r_T}\right)}, \qquad \Delta v_{circ} = \sqrt{\frac{\mu}{r_T}} - v_{apo}$$</div>
+    <div class="meta"><span><b>Code</b> physics/flight.js · CLOSED_LOOP, CIRCULARIZE, cutoffDt</span><span><b>Result</b> all six vehicles reach their target within 3 % in altitude and 0.1° in inclination</span></div>
+  </div>
+</section>
+
+<!-- 5 -->
+<section class="sec" id="losses">
+  <h2><span class="n">05</span>Where the Δv goes</h2>
+  <p class="sub">The mission report shows this budget for every flight, and it always adds up.</p>
+  <div class="card">
+    <p class="plain">Some of the engine's push is spent holding the rocket up against gravity, some fights the air, and some is wasted pointing slightly away from the direction of motion. What remains is the speed you gained.</p>
+    <div class="eq">$$\underbrace{\int \frac{F}{m}\,dt}_{\text{ideal}} \;-\; \underbrace{\int -\vec g\cdot\hat v\,dt}_{\text{gravity loss}} \;-\; \underbrace{\int -\vec a_D\cdot\hat v\,dt}_{\text{drag loss}} \;-\; \underbrace{\int \frac{F}{m}\left(1 - \hat u\cdot\hat v\right)dt}_{\text{steering loss}} \;=\; \Delta\lvert\vec v\rvert$$</div>
+    <div class="meta"><span><b>Typical</b> gravity loss 1.2–1.5 km/s, drag loss 50–150 m/s</span><span><b>Code</b> physics/flight.js · losses</span></div>
+  </div>
+</section>
+
+<!-- 6 -->
+<section class="sec" id="orbit">
+  <h2><span class="n">06</span>Orbits</h2>
+  <div class="card">
+    <h3>Kepler's equation</h3>
+    <p class="plain">Where a satellite is on its ellipse at a given time. The GPU solves this for every catalog object, every frame, to animate the whole sky.</p>
+    <div class="eq">$$M = M_0 + n\,(t - t_0) = E - e\sin E, \qquad n = \sqrt{\mu / a^3}$$</div>
+  </div>
+  <div class="card">
+    <h3>J2 secular drift</h3>
+    <p class="plain">The equatorial bulge makes orbit planes rotate (nodal precession) and ellipses turn. Sun-synchronous orbits exploit exactly this, at about 98° inclination.</p>
+    <div class="eq">$$\dot\Omega = -\tfrac32 J_2 \left(\frac{R_E}{p}\right)^2 n\cos i, \qquad \dot\omega = \tfrac34 J_2 \left(\frac{R_E}{p}\right)^2 n\left(5\cos^2 i - 1\right), \qquad p = a\,(1 - e^2)$$</div>
+    <div class="meta"><span><b>Code</b> game/scene.js · CatalogCloud (animation only; screening uses full SGP4)</span></div>
+  </div>
+</section>
+
+<!-- 7 -->
+<section class="sec" id="catalog">
+  <h2><span class="n">07</span>The catalog and SGP4</h2>
+  <p class="sub">The real sky: public two-line element sets from Space-Track and CelesTrak, refreshed every 6 hours.</p>
+  <div class="card">
+    <h3>SGP4 propagation</h3>
+    <p class="plain">Every object comes as a two-line element set (TLE): a compact description of its orbit at one moment. SGP4 is the standard model that turns a TLE into a position and velocity at any time. It includes Earth's shape, atmospheric drag (through the \(B^*\) term) and Sun–Moon effects for high orbits.</p>
+    <div class="eq">$$\text{TLE}\;\{n_0, e_0, i_0, \Omega_0, \omega_0, M_0, B^*\} \;\xrightarrow{\;\text{SGP4}\;}\; \vec r(t), \vec v(t) \;\text{ in TEME}$$</div>
+    <div class="meta"><span><b>Cross-check</b> the browser's satellite.js against python-sgp4 (shown on the title screen); GMST matches to 1e-9 rad</span><span><b>Code</b> workers/sgp4.worker.js; src/screening</span></div>
+  </div>
+  <div class="card">
+    <h3>How wrong is a TLE? A back-test</h3>
+    <p class="plain">For 17,160 objects, the older element set was propagated to the epoch of the newer one and the two were compared: 25,840 pairs. The error grows with the age of the data, almost entirely along the track.</p>
+    <table>
+      <tr><th>Prediction horizon (LEO)</th><th>Median error</th><th>90th percentile</th></tr>
+      <tr><td>0–6 h</td><td class="num">0.11 km</td><td class="num">3.7 km</td></tr>
+      <tr><td>6–12 h</td><td class="num">0.18 km</td><td class="num">5.0 km</td></tr>
+      <tr><td>12–24 h</td><td class="num">0.59 km</td><td class="num">13.9 km</td></tr>
+      <tr><td>24–48 h</td><td class="num">0.87 km</td><td class="num">11.4 km</td></tr>
+    </table>
+    <div class="eq">$$\sigma(\text{age}) = 0.05\ \text{km} + 0.61\ \tfrac{\text{km}}{\text{day}} \times \text{age} \qquad \text{(robust MAD fit)}$$</div>
+    <div class="meta"><span><b>Used as</b> each object's position uncertainty in the collision probability</span><span><b>Data</b> artifacts/propagation_validation.json</span></div>
+  </div>
+</section>
+
+<!-- 8 -->
+<section class="sec" id="screen">
+  <h2><span class="n">08</span>Finding close approaches</h2>
+  <p class="sub">About 2,500 objects screened against the rocket's path in 15–40 ms, in the browser.</p>
+  <div class="card">
+    <h3>Cubic Hermite interpolation</h3>
+    <p class="plain">SGP4 is run every 60 s for every object (position <i>and</i> velocity). Between samples, a cubic curve that matches both is accurate to well under a metre, because orbital motion is very smooth.</p>
+    <div class="eq">$$\vec r(s) = h_{00}(s)\,\vec r_k + h_{10}(s)\,\Delta t\,\vec v_k + h_{01}(s)\,\vec r_{k+1} + h_{11}(s)\,\Delta t\,\vec v_{k+1}, \quad s\in[0,1]$$</div>
+  </div>
+  <div class="card">
+    <h3>Time of closest approach</h3>
+    <p class="plain">Over one minute, two free-falling objects move almost in straight lines relative to each other, so the closest approach has a closed form. It is then refined on the exact curves with a golden-section search (agrees with brute force to 5 m and 0.05 s).</p>
+    <div class="eq">$$\Delta\vec r(t) \approx \Delta\vec r_0 + \Delta\vec v\, t, \qquad t^* = -\frac{\Delta\vec r_0\cdot\Delta\vec v}{\lVert\Delta\vec v\rVert^2}, \qquad d_{miss} = \lVert\Delta\vec r(t^*)\rVert$$</div>
+    <div class="meta"><span><b>Code</b> physics/collision.js · screen</span><span><b>Prune</b> keep anything within the full maneuver envelope + 45 km</span></div>
+  </div>
+</section>
+
+<!-- 9 -->
+<section class="sec" id="pc">
+  <h2><span class="n">09</span>Probability of collision</h2>
+  <p class="sub">A miss distance alone says little. What matters is how sure we are of it.</p>
+  <div class="card">
+    <h3>The encounter-plane model</h3>
+    <p class="plain">At closest approach, project everything onto the plane perpendicular to the relative velocity. The combined position uncertainty is a 2-D Gaussian there. A collision happens if the true miss is smaller than the combined hard-body radius (HBR) of the two objects. With equal uncertainty in both directions, the probability is a non-central chi-square distribution.</p>
+    <div class="eq">$$\sigma^2 = \sigma_{obj}^2(\text{age}) + \sigma_{veh}^2, \qquad P_c = \Pr\!\left[\chi'^2_{2}\!\left(\lambda = \tfrac{d_{miss}^2}{\sigma^2}\right) \le \tfrac{\text{HBR}^2}{\sigma^2}\right] = \sum_{j\ge0} \frac{e^{-\lambda/2}(\lambda/2)^j}{j!}\, P\!\left(j+1, \tfrac{\text{HBR}^2}{2\sigma^2}\right)$$</div>
+    <div class="grid2">
+      <div><table><tr><th>Level</th><th>Rule</th></tr>
+        <tr><td style="color:var(--red);font-weight:700">RED</td><td>\(P_c \ge 10^{-4}\) or miss &lt; 1 km: maneuver (the NASA CARA threshold)</td></tr>
+        <tr><td style="color:var(--amber);font-weight:700">AMBER</td><td>\(P_c \ge 10^{-6}\) or miss &lt; 5 km: watch</td></tr>
+        <tr><td style="color:var(--green);font-weight:700">GREEN</td><td>everything else</td></tr></table></div>
+      <div><p>In the game, flying through a conjunction draws the outcome from its \(P_c\): a 1-in-1,000 risk really is one in a thousand. The vehicle's own uncertainty is \(\sigma_{veh} = 0.25\) km; the HBR comes from each object's radar cross-section.</p></div>
+    </div>
+    <div class="meta"><span><b>Code</b> physics/collision.js · ncx2cdf2, collisionProbability</span><span><b>Tested</b> equals scipy.stats.ncx2.cdf to 1e-6 relative</span></div>
+  </div>
+</section>
+
+<!-- 10 -->
+<section class="sec" id="dodge">
+  <h2><span class="n">10</span>Dodging in orbit</h2>
+  <div class="card">
+    <h3>Burns in the RTN frame</h3>
+    <p class="plain">Avoidance burns are given as Radial (away from Earth), Transverse (along the motion) and Normal (out of the orbit plane). A tiny prograde push, made early, moves you a long way along the track by the time of closest approach. That is why early, small burns are cheap.</p>
+    <div class="eq">$$\hat R = \frac{\vec r}{r}, \quad \hat N = \frac{\vec r\times\vec v}{\lVert\vec r\times\vec v\rVert}, \quad \hat T = \hat N\times\hat R, \qquad \Delta s_{\text{along}} \approx 3\,\Delta v_T\, \Delta t \quad\text{(Clohessy–Wiltshire rule of thumb)}$$</div>
+    <div class="meta"><span><b>Sentinel in orbit</b> searches direction × size × lead time, then re-screens the best burn against the whole catalog</span><span><b>Code</b> game/main.js · btn-mv-ai; physics/frames.js · rtnBasis</span></div>
+  </div>
+</section>
+
+<!-- 11 -->
+<section class="sec" id="ai">
+  <h2><span class="n">11</span>The Sentinel AI: Double DQN</h2>
+  <p class="sub">Reinforcement learning that plans the launch, with a safety net it cannot remove.</p>
+  <div class="card">
+    <h3>The problem as a Markov decision process</h3>
+    <p class="plain">The agent sees the current plan and the five most dangerous conjunctions. At each step it either commits or nudges the plan: launch 60 s earlier or later, insertion altitude ±2 km, or a phasing burn of ±0.5 m/s. Every step re-screens the plan against the real catalog, so it always acts on real physics, never on a learned guess.</p>
+    <div class="eq">$$s \in \mathbb R^{48}, \quad a \in \{\text{COMMIT}, \pm60\,\text{s}, \pm2\,\text{km}, \pm0.5\,\text{m/s}\}, \quad \Phi(s) = -\sum_i\left[\operatorname{clip}\!\left(1 - \tfrac{d_i}{5\,\text{km}}\right)^2 + 2\,\mathbb 1_{\text{RED},i}\right]$$</div>
+    <div class="eq">$$r = \Phi(s') - \Phi(s) \;-\; 0.25\,\Delta v \;-\; 0.1\,t_{slip,\min} \;-\; 0.02 \;+\; r_{\text{terminal}}$$</div>
+    <p>Shaping with a potential difference (Ng et al., 1999) speeds up learning without changing which policy is optimal.</p>
+  </div>
+  <div class="card">
+    <h3>Double DQN</h3>
+    <p class="plain">A neural network estimates how good each action is. Plain DQN tends to overestimate, because the same network both picks and scores the next action. Double DQN lets the online network pick and the target network score.</p>
+    <div class="eq">$$y = r + \gamma\, Q_{\theta^-}\!\left(s',\, \arg\max_{a'} Q_\theta(s', a')\right), \qquad \mathcal L(\theta) = \operatorname{Huber}\big(y - Q_\theta(s,a)\big), \qquad \theta^- \leftarrow \tau\theta + (1-\tau)\,\theta^-$$</div>
+    <div class="meta"><span>dueling head · 2 × 256 ReLU · Adam 3e-4 · γ = 0.97 · τ = 0.01 · action masks · 4,000 episodes (~8.5 min CPU)</span><span><b>Served</b> as numpy / plain JS: 13 µs per decision</span></div>
+  </div>
+  <div class="card">
+    <h3>Results on 200 held-out scenarios (156 contain a RED conjunction)</h3>
+    <table>
+      <tr><th>Policy</th><th>Safe (no RED)</th><th>Clean (no AMBER)</th><th>Δv m/s</th><th>Screenings / plan</th></tr>
+      <tr><td>No avoidance</td><td class="num">22.0 %</td><td class="num">11.5 %</td><td class="num">0</td><td class="num">1</td></tr>
+      <tr><td>Random</td><td class="num">73.0 %</td><td class="num">35.0 %</td><td class="num">1.17</td><td class="num">4.9</td></tr>
+      <tr><td>Greedy one-step search</td><td class="num">100 %</td><td class="num">93.0 %</td><td class="num">0.58</td><td class="num">13.7</td></tr>
+      <tr><td>Double DQN</td><td class="num">99.5 %</td><td class="num">82.0 %</td><td class="num">0.75</td><td class="num">4.3</td></tr>
+      <tr class="hl"><td>Double DQN + verification guard</td><td class="num">100 %</td><td class="num">82.0 %</td><td class="num">0.74</td><td class="num">5.3</td></tr>
+      <tr><td>Brute-force grid (80-scenario subset)</td><td class="num">100 %</td><td class="num">100 %</td><td class="num">0.57</td><td class="num">294</td></tr>
+    </table>
+    <p><b>What this shows:</b> the guarded agent reaches 92 % of the brute-force optimum with 56× fewer screenings. In real operations a screening runs high-fidelity ephemerides against the whole catalog and takes minutes, so screenings are the cost that matters.</p>
+    <p><b>What it does not show:</b> greedy search finds cleaner plans (93 % vs 82 %), and Double DQN ties vanilla DQN on such short episodes. The AI's honest value is <i>speed</i>, not better plans. Safety comes from the guard: every committed plan is re-screened, and if anything is still RED the system falls back to exhaustive search. The guard triggered in 0.5 % of cases.</p>
+  </div>
+</section>
+
+<!-- 12 -->
+<section class="sec" id="limits">
+  <h2><span class="n">12</span>Honest limits</h2>
+  <div class="card"><ul class="limits">
+    <li><b>Public TLEs have no covariance.</b> Uncertainty is modelled as isotropic and grows with data age. Real operators use owner-supplied ephemerides with full covariance, and the along-track error dominates.</li>
+    <li><b>Partial catalog without Space-Track credentials.</b> The CelesTrak fallback omits most rocket bodies and small debris; the game labels it. Objects under ~10 cm are not tracked at all, yet can still destroy a satellite.</li>
+    <li><b>Approximate vehicles.</b> Stage masses, thrust and Isp are public approximations, and there is no engine-out, wind or weather model.</li>
+    <li><b>The AI is not a certified tool.</b> It was trained on simulated scenarios with injected threats. Its plans are always verified by physics, and it should be read as a research demonstration.</li>
+    <li><b>Simplified Pc.</b> A 2-D Gaussian with a spherical hard body; no Monte Carlo for long, slow encounters.</li>
+    <li><b>Fragmentation events in missions are synthetic,</b> drawn around real rocket bodies so they cross your orbit.</li>
+  </ul></div>
+</section>
+
+<section class="sec collab" id="collab">
+  <h2>Take this further, together</h2>
+  <p>SentinelFlight is an open, physics-true sandbox for learning how launches and space traffic really work. To grow into a tool that schools and operators can rely on, it needs partners:</p>
+  <ul class="limits">
+    <li><b>Space agencies</b>: real conjunction data messages and covariance, and validation against operational screening.</li>
+    <li><b>Universities</b>: course material, student projects, and research on learned avoidance policies.</li>
+    <li><b>Satellite operators</b>: maneuver constraints and ephemerides that make the planning problem real.</li>
+  </ul>
+  <p class="noprint"><a class="pill" href="https://github.com/thrishankkuntimaddi/Enhanced-Space-Debris-Avoidance-and-Trajectory-Optimization-System">Source code on GitHub</a></p>
+  <p>Built by <b>Thrishank Kuntimaddi</b>.</p>
+</section>
+</main>
+</div>
+<footer>SentinelFlight · sentinelflight.poelys.com · equations as implemented in the source code. Simulation for education and research.</footer>
+</body>
+</html>

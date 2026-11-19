@@ -1,0 +1,836 @@
+{
+ "providers": [
+  "spacex",
+  "isro",
+  "roscosmos",
+  "arianespace",
+  "rocketlab"
+ ],
+ "clips": {
+  "fd_poll": {
+   "file": "fd_poll.mp3",
+   "dur": 3.811,
+   "text": "All stations, this is Flight. Stand by for the go, no-go poll."
+  },
+  "fd_weather": {
+   "file": "fd_weather.mp3",
+   "dur": 0.439,
+   "text": "Weather?"
+  },
+  "fd_range": {
+   "file": "fd_range.mp3",
+   "dur": 0.5,
+   "text": "Range?"
+  },
+  "fd_prop": {
+   "file": "fd_prop.mp3",
+   "dur": 0.61,
+   "text": "Propulsion?"
+  },
+  "fd_guid": {
+   "file": "fd_guid.mp3",
+   "dur": 0.595,
+   "text": "Guidance?"
+  },
+  "fd_health": {
+   "file": "fd_health.mp3",
+   "dur": 0.77,
+   "text": "Vehicle health?"
+  },
+  "fd_cola": {
+   "file": "fd_cola.mp3",
+   "dur": 1.538,
+   "text": "Sentinel, collision avoidance?"
+  },
+  "fd_go": {
+   "file": "fd_go.mp3",
+   "dur": 2.163,
+   "text": "Launch director, Flight is go for launch."
+  },
+  "fd_red_ack": {
+   "file": "fd_red_ack.mp3",
+   "dur": 2.424,
+   "text": "Copy, Sentinel. Launch director, your call."
+  },
+  "cc_orbit": {
+   "file": "cc_orbit.mp3",
+   "dur": 2.756,
+   "text": "Orbit insertion confirmed. Welcome to space."
+  },
+  "cc_conj_red": {
+   "file": "cc_conj_red.mp3",
+   "dur": 4.24,
+   "text": "Conjunction warning. Red. A tracked object is closing on our orbit."
+  },
+  "cc_conj_amber": {
+   "file": "cc_conj_amber.mp3",
+   "dur": 1.877,
+   "text": "Heads up. Amber conjunction ahead."
+  },
+  "cc_sentinel": {
+   "file": "cc_sentinel.mp3",
+   "dur": 3.671,
+   "text": "Sentinel has a burn solution. Verified against the full catalog."
+  },
+  "cc_burn": {
+   "file": "cc_burn.mp3",
+   "dur": 1.956,
+   "text": "Avoidance burn. Executing now."
+  },
+  "cc_clear": {
+   "file": "cc_clear.mp3",
+   "dur": 1.818,
+   "text": "Close approach passed. We are clear."
+  },
+  "cc_frag": {
+   "file": "cc_frag.mp3",
+   "dur": 3.218,
+   "text": "Warning. Fragmentation event. New debris on our track."
+  },
+  "cc_payload": {
+   "file": "cc_payload.mp3",
+   "dur": 2.579,
+   "text": "Payload separation confirmed. Good deploy."
+  },
+  "cc_deorbit": {
+   "file": "cc_deorbit.mp3",
+   "dur": 3.654,
+   "text": "Deorbit burn complete. The stage is headed for a safe reentry."
+  },
+  "cc_collision": {
+   "file": "cc_collision.mp3",
+   "dur": 1.672,
+   "text": "Collision. We have loss of signal."
+  },
+  "cc_success": {
+   "file": "cc_success.mp3",
+   "dur": 1.847,
+   "text": "Mission success. Great flying."
+  },
+  "cc_horizon": {
+   "file": "cc_horizon.mp3",
+   "dur": 4.012,
+   "text": "End of the screening horizon. Deploy the payload and dispose of the stage."
+  },
+  "st_weather_go": {
+   "file": "st_weather_go.mp3",
+   "dur": 0.833,
+   "text": "Weather is go."
+  },
+  "st_range_go": {
+   "file": "st_range_go.mp3",
+   "dur": 0.818,
+   "text": "Range is go."
+  },
+  "st_prop_go": {
+   "file": "st_prop_go.mp3",
+   "dur": 1.093,
+   "text": "Propulsion is go."
+  },
+  "st_guid_go": {
+   "file": "st_guid_go.mp3",
+   "dur": 3.002,
+   "text": "Guidance is go. Flight computer has the trajectory."
+  },
+  "st_health_go": {
+   "file": "st_health_go.mp3",
+   "dur": 2.588,
+   "text": "All systems nominal. Vehicle health is good."
+  },
+  "st_cola_go": {
+   "file": "st_cola_go.mp3",
+   "dur": 2.387,
+   "text": "Sentinel is go. The launch window is clear."
+  },
+  "st_cola_amber": {
+   "file": "st_cola_amber.mp3",
+   "dur": 3.322,
+   "text": "Sentinel is go. One amber conjunction, inside limits."
+  },
+  "st_cola_red": {
+   "file": "st_cola_red.mp3",
+   "dur": 2.96,
+   "text": "Sentinel is no-go. Red conjunction on this plan."
+  },
+  "ld_spacex_copy": {
+   "file": "ld_spacex_copy.mp3",
+   "dur": 3.35,
+   "text": "Copy. We are go for launch. Resuming the terminal count."
+  },
+  "ld_spacex_t10": {
+   "file": "ld_spacex_t10.mp3",
+   "dur": 1.01,
+   "text": "T minus ten."
+  },
+  "ld_spacex_n9": {
+   "file": "ld_spacex_n9.mp3",
+   "dur": 0.502,
+   "text": "Nine."
+  },
+  "ld_spacex_n8": {
+   "file": "ld_spacex_n8.mp3",
+   "dur": 0.441,
+   "text": "Eight."
+  },
+  "ld_spacex_n7": {
+   "file": "ld_spacex_n7.mp3",
+   "dur": 0.567,
+   "text": "Seven."
+  },
+  "ld_spacex_n6": {
+   "file": "ld_spacex_n6.mp3",
+   "dur": 0.537,
+   "text": "Six."
+  },
+  "ld_spacex_n5": {
+   "file": "ld_spacex_n5.mp3",
+   "dur": 0.548,
+   "text": "Five."
+  },
+  "ld_spacex_n4": {
+   "file": "ld_spacex_n4.mp3",
+   "dur": 0.511,
+   "text": "Four."
+  },
+  "ld_spacex_n3": {
+   "file": "ld_spacex_n3.mp3",
+   "dur": 0.499,
+   "text": "Three."
+  },
+  "ld_spacex_n2": {
+   "file": "ld_spacex_n2.mp3",
+   "dur": 0.423,
+   "text": "Two."
+  },
+  "ld_spacex_n1": {
+   "file": "ld_spacex_n1.mp3",
+   "dur": 0.437,
+   "text": "One."
+  },
+  "ld_spacex_tower": {
+   "file": "ld_spacex_tower.mp3",
+   "dur": 1.538,
+   "text": "Vehicle has cleared the tower."
+  },
+  "ld_spacex_pitch": {
+   "file": "ld_spacex_pitch.mp3",
+   "dur": 2.776,
+   "text": "Pitch program. Vehicle is heading downrange."
+  },
+  "ld_spacex_super": {
+   "file": "ld_spacex_super.mp3",
+   "dur": 1.4,
+   "text": "Vehicle is supersonic."
+  },
+  "ld_spacex_maxq": {
+   "file": "ld_spacex_maxq.mp3",
+   "dur": 3.242,
+   "text": "Max Q. Peak aerodynamic pressure on the vehicle."
+  },
+  "ld_spacex_beco": {
+   "file": "ld_spacex_beco.mp3",
+   "dur": 1.46,
+   "text": "Booster engine cutoff."
+  },
+  "ld_spacex_bsep": {
+   "file": "ld_spacex_bsep.mp3",
+   "dur": 1.509,
+   "text": "Side booster separation."
+  },
+  "ld_spacex_meco": {
+   "file": "ld_spacex_meco.mp3",
+   "dur": 1.346,
+   "text": "Main engine cutoff."
+  },
+  "ld_spacex_ssep": {
+   "file": "ld_spacex_ssep.mp3",
+   "dur": 1.706,
+   "text": "Stage separation confirmed."
+  },
+  "ld_spacex_ses": {
+   "file": "ld_spacex_ses.mp3",
+   "dur": 1.234,
+   "text": "Upper stage ignition."
+  },
+  "ld_spacex_fairing": {
+   "file": "ld_spacex_fairing.mp3",
+   "dur": 1.135,
+   "text": "Fairing separation."
+  },
+  "ld_spacex_guid": {
+   "file": "ld_spacex_guid.mp3",
+   "dur": 1.926,
+   "text": "Closed loop guidance has the vehicle."
+  },
+  "ld_spacex_nominal": {
+   "file": "ld_spacex_nominal.mp3",
+   "dur": 3.324,
+   "text": "Telemetry nominal. Trajectory is right on the line."
+  },
+  "ld_spacex_seco": {
+   "file": "ld_spacex_seco.mp3",
+   "dur": 2.598,
+   "text": "Engine cutoff. We are in the transfer orbit."
+  },
+  "ld_spacex_circ": {
+   "file": "ld_spacex_circ.mp3",
+   "dur": 2.087,
+   "text": "Circularization burn is underway."
+  },
+  "ld_spacex_lost": {
+   "file": "ld_spacex_lost.mp3",
+   "dur": 1.235,
+   "text": "We have lost the vehicle."
+  },
+  "ld_isro_copy": {
+   "file": "ld_isro_copy.mp3",
+   "dur": 3.41,
+   "text": "Copy. We are go for launch. Resuming the terminal count."
+  },
+  "ld_isro_t10": {
+   "file": "ld_isro_t10.mp3",
+   "dur": 1.175,
+   "text": "T minus ten."
+  },
+  "ld_isro_n9": {
+   "file": "ld_isro_n9.mp3",
+   "dur": 0.618,
+   "text": "Nine."
+  },
+  "ld_isro_n8": {
+   "file": "ld_isro_n8.mp3",
+   "dur": 0.533,
+   "text": "Eight."
+  },
+  "ld_isro_n7": {
+   "file": "ld_isro_n7.mp3",
+   "dur": 0.637,
+   "text": "Seven."
+  },
+  "ld_isro_n6": {
+   "file": "ld_isro_n6.mp3",
+   "dur": 0.543,
+   "text": "Six."
+  },
+  "ld_isro_n5": {
+   "file": "ld_isro_n5.mp3",
+   "dur": 0.645,
+   "text": "Five."
+  },
+  "ld_isro_n4": {
+   "file": "ld_isro_n4.mp3",
+   "dur": 0.617,
+   "text": "Four."
+  },
+  "ld_isro_n3": {
+   "file": "ld_isro_n3.mp3",
+   "dur": 0.567,
+   "text": "Three."
+  },
+  "ld_isro_n2": {
+   "file": "ld_isro_n2.mp3",
+   "dur": 0.554,
+   "text": "Two."
+  },
+  "ld_isro_n1": {
+   "file": "ld_isro_n1.mp3",
+   "dur": 0.557,
+   "text": "One."
+  },
+  "ld_isro_tower": {
+   "file": "ld_isro_tower.mp3",
+   "dur": 1.764,
+   "text": "Vehicle has cleared the tower."
+  },
+  "ld_isro_pitch": {
+   "file": "ld_isro_pitch.mp3",
+   "dur": 2.766,
+   "text": "Pitch program. Vehicle is heading downrange."
+  },
+  "ld_isro_super": {
+   "file": "ld_isro_super.mp3",
+   "dur": 1.793,
+   "text": "Vehicle is supersonic."
+  },
+  "ld_isro_maxq": {
+   "file": "ld_isro_maxq.mp3",
+   "dur": 3.206,
+   "text": "Max Q. Peak aerodynamic pressure on the vehicle."
+  },
+  "ld_isro_beco": {
+   "file": "ld_isro_beco.mp3",
+   "dur": 1.699,
+   "text": "Booster engine cutoff."
+  },
+  "ld_isro_bsep": {
+   "file": "ld_isro_bsep.mp3",
+   "dur": 1.435,
+   "text": "Booster separation."
+  },
+  "ld_isro_meco": {
+   "file": "ld_isro_meco.mp3",
+   "dur": 1.587,
+   "text": "Main engine cutoff."
+  },
+  "ld_isro_ssep": {
+   "file": "ld_isro_ssep.mp3",
+   "dur": 1.86,
+   "text": "Stage separation confirmed."
+  },
+  "ld_isro_ses": {
+   "file": "ld_isro_ses.mp3",
+   "dur": 1.514,
+   "text": "Upper stage ignition."
+  },
+  "ld_isro_fairing": {
+   "file": "ld_isro_fairing.mp3",
+   "dur": 1.28,
+   "text": "Fairing separation."
+  },
+  "ld_isro_guid": {
+   "file": "ld_isro_guid.mp3",
+   "dur": 2.205,
+   "text": "Closed loop guidance has the vehicle."
+  },
+  "ld_isro_nominal": {
+   "file": "ld_isro_nominal.mp3",
+   "dur": 3.384,
+   "text": "Telemetry nominal. Trajectory is right on the line."
+  },
+  "ld_isro_seco": {
+   "file": "ld_isro_seco.mp3",
+   "dur": 2.778,
+   "text": "Engine cutoff. We are in the transfer orbit."
+  },
+  "ld_isro_circ": {
+   "file": "ld_isro_circ.mp3",
+   "dur": 2.332,
+   "text": "Circularization burn is underway."
+  },
+  "ld_isro_lost": {
+   "file": "ld_isro_lost.mp3",
+   "dur": 1.469,
+   "text": "We have lost the vehicle."
+  },
+  "ld_roscosmos_copy": {
+   "file": "ld_roscosmos_copy.mp3",
+   "dur": 3.513,
+   "text": "Copy. We are go for launch. Resuming the terminal count."
+  },
+  "ld_roscosmos_t10": {
+   "file": "ld_roscosmos_t10.mp3",
+   "dur": 1.34,
+   "text": "T minus ten."
+  },
+  "ld_roscosmos_n9": {
+   "file": "ld_roscosmos_n9.mp3",
+   "dur": 0.657,
+   "text": "Nine."
+  },
+  "ld_roscosmos_n8": {
+   "file": "ld_roscosmos_n8.mp3",
+   "dur": 0.541,
+   "text": "Eight."
+  },
+  "ld_roscosmos_n7": {
+   "file": "ld_roscosmos_n7.mp3",
+   "dur": 0.664,
+   "text": "Seven."
+  },
+  "ld_roscosmos_n6": {
+   "file": "ld_roscosmos_n6.mp3",
+   "dur": 0.551,
+   "text": "Six."
+  },
+  "ld_roscosmos_n5": {
+   "file": "ld_roscosmos_n5.mp3",
+   "dur": 0.662,
+   "text": "Five."
+  },
+  "ld_roscosmos_n4": {
+   "file": "ld_roscosmos_n4.mp3",
+   "dur": 0.605,
+   "text": "Four."
+  },
+  "ld_roscosmos_n3": {
+   "file": "ld_roscosmos_n3.mp3",
+   "dur": 0.62,
+   "text": "Three."
+  },
+  "ld_roscosmos_n2": {
+   "file": "ld_roscosmos_n2.mp3",
+   "dur": 0.578,
+   "text": "Two."
+  },
+  "ld_roscosmos_n1": {
+   "file": "ld_roscosmos_n1.mp3",
+   "dur": 0.578,
+   "text": "One."
+  },
+  "ld_roscosmos_tower": {
+   "file": "ld_roscosmos_tower.mp3",
+   "dur": 2.016,
+   "text": "Vehicle has cleared the tower."
+  },
+  "ld_roscosmos_pitch": {
+   "file": "ld_roscosmos_pitch.mp3",
+   "dur": 3.019,
+   "text": "Pitch program. Vehicle is heading downrange."
+  },
+  "ld_roscosmos_super": {
+   "file": "ld_roscosmos_super.mp3",
+   "dur": 1.786,
+   "text": "Vehicle is supersonic."
+  },
+  "ld_roscosmos_maxq": {
+   "file": "ld_roscosmos_maxq.mp3",
+   "dur": 3.446,
+   "text": "Max Q. Peak aerodynamic pressure on the vehicle."
+  },
+  "ld_roscosmos_beco": {
+   "file": "ld_roscosmos_beco.mp3",
+   "dur": 1.627,
+   "text": "Booster engine cutoff."
+  },
+  "ld_roscosmos_bsep": {
+   "file": "ld_roscosmos_bsep.mp3",
+   "dur": 1.394,
+   "text": "Booster separation."
+  },
+  "ld_roscosmos_meco": {
+   "file": "ld_roscosmos_meco.mp3",
+   "dur": 1.626,
+   "text": "Main engine cutoff."
+  },
+  "ld_roscosmos_ssep": {
+   "file": "ld_roscosmos_ssep.mp3",
+   "dur": 2.164,
+   "text": "Stage separation confirmed."
+  },
+  "ld_roscosmos_ses": {
+   "file": "ld_roscosmos_ses.mp3",
+   "dur": 1.49,
+   "text": "Upper stage ignition."
+  },
+  "ld_roscosmos_fairing": {
+   "file": "ld_roscosmos_fairing.mp3",
+   "dur": 1.377,
+   "text": "Fairing separation."
+  },
+  "ld_roscosmos_guid": {
+   "file": "ld_roscosmos_guid.mp3",
+   "dur": 2.522,
+   "text": "Closed loop guidance has the vehicle."
+  },
+  "ld_roscosmos_nominal": {
+   "file": "ld_roscosmos_nominal.mp3",
+   "dur": 3.522,
+   "text": "Telemetry nominal. Trajectory is right on the line."
+  },
+  "ld_roscosmos_seco": {
+   "file": "ld_roscosmos_seco.mp3",
+   "dur": 2.841,
+   "text": "Engine cutoff. We are in the transfer orbit."
+  },
+  "ld_roscosmos_circ": {
+   "file": "ld_roscosmos_circ.mp3",
+   "dur": 2.642,
+   "text": "Circularization burn is underway."
+  },
+  "ld_roscosmos_lost": {
+   "file": "ld_roscosmos_lost.mp3",
+   "dur": 1.502,
+   "text": "We have lost the vehicle."
+  },
+  "ld_arianespace_copy": {
+   "file": "ld_arianespace_copy.mp3",
+   "dur": 2.927,
+   "text": "Copy. We are go for launch. Resuming the terminal count."
+  },
+  "ld_arianespace_t10": {
+   "file": "ld_arianespace_t10.mp3",
+   "dur": 1.016,
+   "text": "T minus ten."
+  },
+  "ld_arianespace_n9": {
+   "file": "ld_arianespace_n9.mp3",
+   "dur": 0.831,
+   "text": "Nine."
+  },
+  "ld_arianespace_n8": {
+   "file": "ld_arianespace_n8.mp3",
+   "dur": 0.445,
+   "text": "Eight."
+  },
+  "ld_arianespace_n7": {
+   "file": "ld_arianespace_n7.mp3",
+   "dur": 0.789,
+   "text": "Seven."
+  },
+  "ld_arianespace_n6": {
+   "file": "ld_arianespace_n6.mp3",
+   "dur": 0.609,
+   "text": "Six."
+  },
+  "ld_arianespace_n5": {
+   "file": "ld_arianespace_n5.mp3",
+   "dur": 0.495,
+   "text": "Five."
+  },
+  "ld_arianespace_n4": {
+   "file": "ld_arianespace_n4.mp3",
+   "dur": 0.496,
+   "text": "Four."
+  },
+  "ld_arianespace_n3": {
+   "file": "ld_arianespace_n3.mp3",
+   "dur": 0.444,
+   "text": "Three."
+  },
+  "ld_arianespace_n2": {
+   "file": "ld_arianespace_n2.mp3",
+   "dur": 0.472,
+   "text": "Two."
+  },
+  "ld_arianespace_n1": {
+   "file": "ld_arianespace_n1.mp3",
+   "dur": 0.616,
+   "text": "One."
+  },
+  "ld_arianespace_tower": {
+   "file": "ld_arianespace_tower.mp3",
+   "dur": 1.524,
+   "text": "Vehicle has cleared the tower."
+  },
+  "ld_arianespace_pitch": {
+   "file": "ld_arianespace_pitch.mp3",
+   "dur": 2.384,
+   "text": "Pitch program. Vehicle is heading downrange."
+  },
+  "ld_arianespace_super": {
+   "file": "ld_arianespace_super.mp3",
+   "dur": 1.472,
+   "text": "Vehicle is supersonic."
+  },
+  "ld_arianespace_maxq": {
+   "file": "ld_arianespace_maxq.mp3",
+   "dur": 2.766,
+   "text": "Max Q. Peak aerodynamic pressure on the vehicle."
+  },
+  "ld_arianespace_beco": {
+   "file": "ld_arianespace_beco.mp3",
+   "dur": 1.389,
+   "text": "Booster engine cutoff."
+  },
+  "ld_arianespace_bsep": {
+   "file": "ld_arianespace_bsep.mp3",
+   "dur": 1.215,
+   "text": "Booster separation."
+  },
+  "ld_arianespace_meco": {
+   "file": "ld_arianespace_meco.mp3",
+   "dur": 1.34,
+   "text": "Main engine cutoff."
+  },
+  "ld_arianespace_ssep": {
+   "file": "ld_arianespace_ssep.mp3",
+   "dur": 1.762,
+   "text": "Stage separation confirmed."
+  },
+  "ld_arianespace_ses": {
+   "file": "ld_arianespace_ses.mp3",
+   "dur": 1.221,
+   "text": "Upper stage ignition."
+  },
+  "ld_arianespace_fairing": {
+   "file": "ld_arianespace_fairing.mp3",
+   "dur": 1.241,
+   "text": "Fairing separation."
+  },
+  "ld_arianespace_guid": {
+   "file": "ld_arianespace_guid.mp3",
+   "dur": 1.893,
+   "text": "Closed loop guidance has the vehicle."
+  },
+  "ld_arianespace_nominal": {
+   "file": "ld_arianespace_nominal.mp3",
+   "dur": 2.891,
+   "text": "Telemetry nominal. Trajectory is right on the line."
+  },
+  "ld_arianespace_seco": {
+   "file": "ld_arianespace_seco.mp3",
+   "dur": 2.35,
+   "text": "Engine cutoff. We are in the transfer orbit."
+  },
+  "ld_arianespace_circ": {
+   "file": "ld_arianespace_circ.mp3",
+   "dur": 2.111,
+   "text": "Circularization burn is underway."
+  },
+  "ld_arianespace_lost": {
+   "file": "ld_arianespace_lost.mp3",
+   "dur": 1.21,
+   "text": "We have lost the vehicle."
+  },
+  "ld_rocketlab_copy": {
+   "file": "ld_rocketlab_copy.mp3",
+   "dur": 3.353,
+   "text": "Copy. We are go for launch. Resuming the terminal count."
+  },
+  "ld_rocketlab_t10": {
+   "file": "ld_rocketlab_t10.mp3",
+   "dur": 1.119,
+   "text": "T minus ten."
+  },
+  "ld_rocketlab_n9": {
+   "file": "ld_rocketlab_n9.mp3",
+   "dur": 0.499,
+   "text": "Nine."
+  },
+  "ld_rocketlab_n8": {
+   "file": "ld_rocketlab_n8.mp3",
+   "dur": 0.438,
+   "text": "Eight."
+  },
+  "ld_rocketlab_n7": {
+   "file": "ld_rocketlab_n7.mp3",
+   "dur": 0.518,
+   "text": "Seven."
+  },
+  "ld_rocketlab_n6": {
+   "file": "ld_rocketlab_n6.mp3",
+   "dur": 0.486,
+   "text": "Six."
+  },
+  "ld_rocketlab_n5": {
+   "file": "ld_rocketlab_n5.mp3",
+   "dur": 0.527,
+   "text": "Five."
+  },
+  "ld_rocketlab_n4": {
+   "file": "ld_rocketlab_n4.mp3",
+   "dur": 0.456,
+   "text": "Four."
+  },
+  "ld_rocketlab_n3": {
+   "file": "ld_rocketlab_n3.mp3",
+   "dur": 0.517,
+   "text": "Three."
+  },
+  "ld_rocketlab_n2": {
+   "file": "ld_rocketlab_n2.mp3",
+   "dur": 0.44,
+   "text": "Two."
+  },
+  "ld_rocketlab_n1": {
+   "file": "ld_rocketlab_n1.mp3",
+   "dur": 0.44,
+   "text": "One."
+  },
+  "ld_rocketlab_tower": {
+   "file": "ld_rocketlab_tower.mp3",
+   "dur": 1.769,
+   "text": "Vehicle has cleared the tower."
+  },
+  "ld_rocketlab_pitch": {
+   "file": "ld_rocketlab_pitch.mp3",
+   "dur": 2.827,
+   "text": "Pitch program. Vehicle is heading downrange."
+  },
+  "ld_rocketlab_super": {
+   "file": "ld_rocketlab_super.mp3",
+   "dur": 1.57,
+   "text": "Vehicle is supersonic."
+  },
+  "ld_rocketlab_maxq": {
+   "file": "ld_rocketlab_maxq.mp3",
+   "dur": 3.212,
+   "text": "Max Q. Peak aerodynamic pressure on the vehicle."
+  },
+  "ld_rocketlab_beco": {
+   "file": "ld_rocketlab_beco.mp3",
+   "dur": 1.419,
+   "text": "Booster engine cutoff."
+  },
+  "ld_rocketlab_bsep": {
+   "file": "ld_rocketlab_bsep.mp3",
+   "dur": 1.199,
+   "text": "Booster separation."
+  },
+  "ld_rocketlab_meco": {
+   "file": "ld_rocketlab_meco.mp3",
+   "dur": 1.387,
+   "text": "Main engine cutoff."
+  },
+  "ld_rocketlab_ssep": {
+   "file": "ld_rocketlab_ssep.mp3",
+   "dur": 1.855,
+   "text": "Stage separation confirmed."
+  },
+  "ld_rocketlab_ses": {
+   "file": "ld_rocketlab_ses.mp3",
+   "dur": 1.36,
+   "text": "Upper stage ignition."
+  },
+  "ld_rocketlab_fairing": {
+   "file": "ld_rocketlab_fairing.mp3",
+   "dur": 1.184,
+   "text": "Fairing separation."
+  },
+  "ld_rocketlab_guid": {
+   "file": "ld_rocketlab_guid.mp3",
+   "dur": 2.182,
+   "text": "Closed loop guidance has the vehicle."
+  },
+  "ld_rocketlab_nominal": {
+   "file": "ld_rocketlab_nominal.mp3",
+   "dur": 3.26,
+   "text": "Telemetry nominal. Trajectory is right on the line."
+  },
+  "ld_rocketlab_seco": {
+   "file": "ld_rocketlab_seco.mp3",
+   "dur": 2.842,
+   "text": "Engine cutoff. We are in the transfer orbit."
+  },
+  "ld_rocketlab_circ": {
+   "file": "ld_rocketlab_circ.mp3",
+   "dur": 2.332,
+   "text": "Circularization burn is underway."
+  },
+  "ld_rocketlab_lost": {
+   "file": "ld_rocketlab_lost.mp3",
+   "dur": 1.298,
+   "text": "We have lost the vehicle."
+  },
+  "liftoff_electron": {
+   "file": "liftoff_electron.mp3",
+   "dur": 2.625,
+   "text": "Zero. Liftoff! Liftoff of Electron."
+  },
+  "liftoff_falcon9": {
+   "file": "liftoff_falcon9.mp3",
+   "dur": 2.845,
+   "text": "Zero. Liftoff! Liftoff of Falcon 9."
+  },
+  "liftoff_falconheavy": {
+   "file": "liftoff_falconheavy.mp3",
+   "dur": 2.797,
+   "text": "Zero. Liftoff! Liftoff of Falcon Heavy."
+  },
+  "liftoff_soyuz": {
+   "file": "liftoff_soyuz.mp3",
+   "dur": 2.91,
+   "text": "Zero. Liftoff. Soyuz is on its way."
+  },
+  "liftoff_pslv": {
+   "file": "liftoff_pslv.mp3",
+   "dur": 4.298,
+   "text": "Zero. Liftoff! P S L V has lifted off from Sriharikota."
+  },
+  "liftoff_ariane64": {
+   "file": "liftoff_ariane64.mp3",
+   "dur": 2.301,
+   "text": "Zero. Liftoff! Liftoff of Ariane 6."
+  }
+ }
+}
